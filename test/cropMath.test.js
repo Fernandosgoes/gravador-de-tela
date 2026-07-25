@@ -21,3 +21,8 @@ test('clamps rect exceeding right/bottom edge', () => {
   const result = toCropParams({ x: 1800, y: 1000, width: 300, height: 200 }, { width: 1920, height: 1080 });
   assert.deepStrictEqual(result, { x: 1800, y: 1000, width: 120, height: 80 });
 });
+
+test('clamps to zero-size when rect starts entirely outside bounds', () => {
+  const result = toCropParams({ x: 2000, y: 1100, width: 100, height: 100 }, { width: 1920, height: 1080 });
+  assert.deepStrictEqual(result, { x: 2000, y: 1100, width: 0, height: 0 });
+});

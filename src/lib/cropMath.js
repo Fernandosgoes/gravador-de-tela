@@ -13,10 +13,10 @@ function toCropParams(rect, sourceSize) {
     y = 0;
   }
   if (x + width > sourceSize.width) {
-    width = sourceSize.width - x;
+    width = Math.max(0, sourceSize.width - x);
   }
   if (y + height > sourceSize.height) {
-    height = sourceSize.height - y;
+    height = Math.max(0, sourceSize.height - y);
   }
 
   return { x, y, width, height };
