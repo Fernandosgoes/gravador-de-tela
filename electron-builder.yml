@@ -1,0 +1,9 @@
+appId: com.gravadordetela.app
+productName: Gravador de Tela
+win:
+  target: portable
+files:
+  - src/**/*
+  - package.json
+asarUnpack:
+  - "**/node_modules/ffmpeg-static/**"
