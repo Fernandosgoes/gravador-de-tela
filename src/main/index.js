@@ -1,4 +1,5 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain } = require('electron');
+const { listSources } = require('./capture');
 
 function createToolbarWindow() {
   const win = new BrowserWindow({
@@ -16,6 +17,7 @@ function createToolbarWindow() {
 }
 
 app.whenReady().then(() => {
+  ipcMain.handle('capture:list-sources', () => listSources());
   createToolbarWindow();
 });
 
