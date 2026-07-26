@@ -44,7 +44,7 @@ Layout vertical ~300px largura, auto-altura:
 - **Dropdown Câmera**: `<select>` com opção "Nenhuma câmera" (value vazio) + devices reais, populado via `enumerateDevices()` (lógica já existe em `settings.js`, migra pra `toolbar.js`).
 - **Dropdown Microfone**: mesmo padrão, + toggle de áudio do sistema (checkbox estilizado, não checkbox nativo cru).
 - **Botão Gravar**: círculo grande vermelho (`#FF3B30`), ícone lucide `circle` preenchido, label "Gravar" embaixo ou ao lado. Pulse sutil via CSS.
-- **Linha de ferramentas**: 3 ícones lucide em botões quadrados discretos — `pen` (caneta), `move-up-right` ou `arrow-up-right` (seta), `folder-open` (abrir pasta da última gravação salva).
+- **Linha de ferramentas**: 3 ícones lucide em botões quadrados discretos — `pen` (caneta), `move-up-right` ou `arrow-up-right` (seta), `folder-open` (abrir pasta da última gravação salva). Caneta e seta reaproveitam a lógica já existente e funcional de `toolbar.js` (ciclo de cor via `src/lib/colorCycle.js`, IPC `overlay:set-tool` acionando `src/windows/overlay/`) — só a camada visual (ícone lucide + estado `.active`) é nova, o comportamento não muda.
 
 Pós-gravação (estado `preview`): botão Gravar vira dois botões lado a lado "Salvar" (verde) e "Descartar" (outline vermelho), resto do card (modo captura/dropdowns) fica desabilitado/oculto — igual comportamento atual, só troca visual.
 
