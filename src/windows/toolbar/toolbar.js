@@ -41,17 +41,21 @@ let timerInterval = null;
 let hasSavedThisSession = false;
 let recordingStarting = false;
 
+// Explicit reset back to the default capture mode. Must be called only at real
+// "back to clean idle" points (after save/discard) — NOT from inside render(),
+// because state === 'idle' is also true while the user is actively picking an
+// area (between clicking "Área Customizada" and pickArea() resolving), and
+// render() runs during that window too. A level-triggered check on `state`
+// alone can't distinguish "just reset" from "mid-pick", so the reset must be
+// edge-triggered at the specific call sites instead.
+function resetToFullscreenMode() {
+  captureMode = 'fullscreen';
+  modeFullscreen.classList.add('active');
+  modeArea.classList.remove('active');
+}
+
 function render() {
   body.className = `state-${state}`;
-
-  if (state === 'idle' && captureMode !== 'fullscreen') {
-    // Returning to idle (e.g. after a completed Área Customizada recording is
-    // saved/discarded) must not leave capture mode stuck on 'area' — otherwise
-    // the big Gravar button stays permanently disabled (see Finding 1).
-    captureMode = 'fullscreen';
-    modeFullscreen.classList.add('active');
-    modeArea.classList.remove('active');
-  }
 
   const isIdleOrPreview = state === 'idle' || state === 'preview';
   body.classList.toggle('compact', !isIdleOrPreview);
@@ -88,9 +92,7 @@ function updateTimer() {
 // ---- Capture mode selection ----
 modeFullscreen.addEventListener('click', () => {
   if (state !== 'idle') return;
-  captureMode = 'fullscreen';
-  modeFullscreen.classList.add('active');
-  modeArea.classList.remove('active');
+  resetToFullscreenMode();
   render();
 });
 
@@ -104,9 +106,7 @@ modeArea.addEventListener('click', async () => {
   const cropRect = await window.gravador.pickArea();
   if (!cropRect) {
     // user pressed Escape — revert to fullscreen mode
-    captureMode = 'fullscreen';
-    modeFullscreen.classList.add('active');
-    modeArea.classList.remove('active');
+    resetToFullscreenMode();
     render();
     return;
   }
@@ -171,6 +171,7 @@ btnSave.addEventListener('click', async () => {
       btnOpenFolder.disabled = false;
       lastRecordingBlob = null;
       transition('save');
+      resetToFullscreenMode();
       render();
     }
   } catch (err) {
@@ -181,6 +182,7 @@ btnSave.addEventListener('click', async () => {
 btnDiscard.addEventListener('click', () => {
   lastRecordingBlob = null;
   transition('delete');
+  resetToFullscreenMode();
   render();
 });
 
