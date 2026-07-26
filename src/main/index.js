@@ -16,6 +16,7 @@ function createToolbarWindow() {
       contextIsolation: true
     }
   });
+  win.setContentProtection(true);
   win.loadFile(require('path').join(__dirname, '../windows/toolbar/index.html'));
   win.on('closed', () => {
     app.quit();
