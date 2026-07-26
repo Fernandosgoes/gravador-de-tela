@@ -1,7 +1,20 @@
 <!DOCTYPE html>
 <html>
-<head><title>Gravador de Tela</title></head>
+<head>
+  <title>Gravador de Tela</title>
+  <link rel="stylesheet" href="toolbar.css">
+</head>
 <body>
-  <h3>Gravador de Tela — scaffold OK</h3>
+  <div id="controls">
+    <button id="btnStart">Iniciar</button>
+    <button id="btnPause" disabled>Pausar</button>
+    <button id="btnStop" disabled>Parar</button>
+    <button id="btnPen">Caneta</button>
+    <button id="btnArrow">Seta</button>
+    <button id="btnConfig">Config</button>
+    <button id="btnSave" style="display:none">Salvar</button>
+    <button id="btnDelete" style="display:none">Deletar</button>
+  </div>
+  <script src="toolbar.js"></script>
 </body>
 </html>
