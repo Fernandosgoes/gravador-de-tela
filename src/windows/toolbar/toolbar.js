@@ -28,6 +28,7 @@ function render() {
   const inPreview = state === 'preview';
   btnSave.style.display = inPreview ? 'inline-block' : 'none';
   btnDelete.style.display = inPreview ? 'inline-block' : 'none';
+  window.gravador.notifyState(state);
 }
 
 btnStart.addEventListener('click', async () => {

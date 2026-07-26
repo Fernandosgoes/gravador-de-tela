@@ -1,7 +1,9 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const { listSources } = require('./capture');
 const { toCropParams } = require('../lib/cropMath');
 const { saveRecording } = require('./export');
+
+let toolbarWindow = null;
 
 function createToolbarWindow() {
   const win = new BrowserWindow({
@@ -15,6 +17,7 @@ function createToolbarWindow() {
     }
   });
   win.loadFile(require('path').join(__dirname, '../windows/toolbar/index.html'));
+  toolbarWindow = win;
   return win;
 }
 
@@ -104,7 +107,27 @@ function createSettingsWindow() {
   settingsWindow.on('closed', () => { settingsWindow = null; });
 }
 
+let currentRecordingState = 'idle';
+
+app.on('before-quit', (event) => {
+  if (currentRecordingState === 'recording' || currentRecordingState === 'paused') {
+    const choice = dialog.showMessageBoxSync({
+      type: 'warning',
+      buttons: ['Cancelar', 'Sair mesmo assim'],
+      defaultId: 0,
+      title: 'Gravação em andamento',
+      message: 'Você tem uma gravação em andamento que será perdida. Sair mesmo assim?'
+    });
+    if (choice === 0) {
+      event.preventDefault();
+    }
+  }
+});
+
 app.whenReady().then(() => {
+  ipcMain.on('recording:state-changed', (event, state) => {
+    currentRecordingState = state;
+  });
   ipcMain.handle('capture:list-sources', () => listSources());
   ipcMain.handle('areaselect:pick', () => createAreaSelectWindow());
   ipcMain.on('overlay:set-tool', (event, payload) => {

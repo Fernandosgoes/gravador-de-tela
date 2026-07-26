@@ -6,5 +6,6 @@ contextBridge.exposeInMainWorld('gravador', {
   setOverlayTool: (payload) => ipcRenderer.send('overlay:set-tool', payload),
   openSettings: () => ipcRenderer.send('open-settings'),
   getSettings: () => ipcRenderer.invoke('settings:get'),
-  saveRecording: (arrayBuffer) => ipcRenderer.invoke('export:save', arrayBuffer)
+  saveRecording: (arrayBuffer) => ipcRenderer.invoke('export:save', arrayBuffer),
+  notifyState: (state) => ipcRenderer.send('recording:state-changed', state)
 });
