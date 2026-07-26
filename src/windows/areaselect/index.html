@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    html, body { margin: 0; padding: 0; background: rgba(0,0,0,0.15); overflow: hidden; cursor: crosshair; }
+    #rect { position: absolute; border: 2px dashed #4caf50; background: rgba(76,175,80,0.15); display: none; }
+    #hint { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); color: #fff; font-family: sans-serif; }
+  </style>
+</head>
+<body>
+  <div id="hint">Arraste para selecionar a área. Esc para cancelar.</div>
+  <div id="rect"></div>
+  <script src="areaselect.js"></script>
+</body>
+</html>
