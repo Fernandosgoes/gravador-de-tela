@@ -82,3 +82,12 @@ function render() {
   requestAnimationFrame(render);
 }
 render();
+
+const bubbleEl = document.getElementById('webcamBubble');
+document.addEventListener('mousemove', (e) => {
+  if (currentTool !== 'none') return;
+  const rect = bubbleEl.getBoundingClientRect();
+  const overBubble = e.clientX >= rect.left && e.clientX <= rect.right &&
+                      e.clientY >= rect.top && e.clientY <= rect.bottom;
+  window.overlayBridge.setIgnoreMouse(!overBubble);
+});

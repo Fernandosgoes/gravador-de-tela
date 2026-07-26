@@ -3,11 +3,26 @@
 <head>
   <style>
     html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
-    canvas { display: block; }
+    canvas { display: block; position: absolute; top: 0; left: 0; }
+    #webcamBubble {
+      position: absolute;
+      width: 160px;
+      height: 160px;
+      border-radius: 50%;
+      overflow: hidden;
+      right: 24px;
+      bottom: 24px;
+      cursor: move;
+      display: none;
+      border: 2px solid rgba(255,255,255,0.8);
+    }
+    #webcamBubble video { width: 100%; height: 100%; object-fit: cover; }
   </style>
 </head>
 <body>
   <canvas id="board"></canvas>
+  <div id="webcamBubble"><video id="webcamVideo" autoplay muted></video></div>
   <script src="overlay.js"></script>
+  <script src="../../renderer/webcam.js"></script>
 </body>
 </html>

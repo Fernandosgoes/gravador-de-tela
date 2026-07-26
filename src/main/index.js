@@ -112,6 +112,9 @@ app.whenReady().then(() => {
       overlayWindow.webContents.send('overlay:tool-changed', payload);
     }
   });
+  ipcMain.on('overlay:set-ignore-mouse', (event, ignore) => {
+    if (overlayWindow) overlayWindow.setIgnoreMouseEvents(ignore, { forward: true });
+  });
   ipcMain.handle('settings:get', () => appSettings);
   ipcMain.on('settings:update', (event, newSettings) => {
     appSettings = { ...appSettings, ...newSettings };
