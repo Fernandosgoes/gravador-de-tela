@@ -81,6 +81,28 @@ function createOverlayWindow() {
   return overlayWindow;
 }
 
+let appSettings = {
+  cameraId: null,
+  micEnabled: true,
+  micId: null,
+  systemAudioEnabled: true
+};
+let settingsWindow = null;
+
+function createSettingsWindow() {
+  if (settingsWindow) { settingsWindow.focus(); return; }
+  settingsWindow = new BrowserWindow({
+    width: 360,
+    height: 320,
+    webPreferences: {
+      preload: require('path').join(__dirname, '../windows/settings/preload.js'),
+      contextIsolation: true
+    }
+  });
+  settingsWindow.loadFile(require('path').join(__dirname, '../windows/settings/index.html'));
+  settingsWindow.on('closed', () => { settingsWindow = null; });
+}
+
 app.whenReady().then(() => {
   ipcMain.handle('capture:list-sources', () => listSources());
   ipcMain.handle('areaselect:pick', () => createAreaSelectWindow());
@@ -90,6 +112,12 @@ app.whenReady().then(() => {
       overlayWindow.webContents.send('overlay:tool-changed', payload);
     }
   });
+  ipcMain.handle('settings:get', () => appSettings);
+  ipcMain.on('settings:update', (event, newSettings) => {
+    appSettings = { ...appSettings, ...newSettings };
+    BrowserWindow.getAllWindows().forEach(w => w.webContents.send('settings:changed', appSettings));
+  });
+  ipcMain.on('open-settings', () => createSettingsWindow());
   createToolbarWindow();
   createOverlayWindow();
 });

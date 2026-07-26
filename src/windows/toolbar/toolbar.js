@@ -74,3 +74,7 @@ btnArrow.addEventListener('click', () => {
   btnArrow.classList.toggle('active', arrowOn);
   window.gravador.setOverlayTool({ tool: arrowOn ? 'arrow' : 'none', color: '#000000' });
 });
+
+document.getElementById('btnConfig').addEventListener('click', () => {
+  window.gravador.openSettings();
+});
