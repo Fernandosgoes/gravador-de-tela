@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Menu, shell } = require('electron');
 const { listSources } = require('./capture');
 const { toCropParams } = require('../lib/cropMath');
 const { saveRecording } = require('./export');
@@ -187,9 +187,19 @@ app.whenReady().then(() => {
     BrowserWindow.getAllWindows().forEach(w => w.webContents.send('settings:changed', appSettings));
   });
   ipcMain.on('open-settings', () => createSettingsWindow());
+  let lastSavedPath = null;
   ipcMain.handle('export:save', async (event, arrayBuffer) => {
     const win = BrowserWindow.fromWebContents(event.sender);
-    return saveRecording(Buffer.from(arrayBuffer), win);
+    const result = await saveRecording(Buffer.from(arrayBuffer), win);
+    if (result.success) {
+      lastSavedPath = result.path;
+    }
+    return result;
+  });
+  ipcMain.handle('export:open-last-folder', () => {
+    if (!lastSavedPath) return { opened: false };
+    shell.showItemInFolder(lastSavedPath);
+    return { opened: true };
   });
   createToolbarWindow();
   createOverlayWindow();
