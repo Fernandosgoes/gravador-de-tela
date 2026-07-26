@@ -17,6 +17,9 @@ function createToolbarWindow() {
     }
   });
   win.loadFile(require('path').join(__dirname, '../windows/toolbar/index.html'));
+  win.on('closed', () => {
+    app.quit();
+  });
   toolbarWindow = win;
   return win;
 }

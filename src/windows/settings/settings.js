@@ -5,6 +5,10 @@ const sysAudioToggle = document.getElementById('sysAudioToggle');
 
 async function populateDevices() {
   const devices = await navigator.mediaDevices.enumerateDevices();
+  const noneOpt = document.createElement('option');
+  noneOpt.value = '';
+  noneOpt.textContent = 'Nenhuma câmera';
+  cameraSelect.appendChild(noneOpt);
   for (const d of devices.filter(d => d.kind === 'videoinput')) {
     const opt = document.createElement('option');
     opt.value = d.deviceId;

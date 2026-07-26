@@ -66,15 +66,19 @@ btnStop.addEventListener('click', async () => {
 });
 btnSave.addEventListener('click', async () => {
   if (!lastRecordingBlob) return;
-  const arrayBuffer = await lastRecordingBlob.arrayBuffer();
-  const result = await window.gravador.saveRecording(arrayBuffer);
-  if (result.success) {
-    if (result.format === 'webm') {
-      alert('Não foi possível converter para MP4, salvo como WebM: ' + result.path);
+  try {
+    const arrayBuffer = await lastRecordingBlob.arrayBuffer();
+    const result = await window.gravador.saveRecording(arrayBuffer);
+    if (result.success) {
+      if (result.format === 'webm') {
+        alert('Não foi possível converter para MP4, salvo como WebM: ' + result.path);
+      }
+      lastRecordingBlob = null;
+      transition('save');
+      render();
     }
-    lastRecordingBlob = null;
-    transition('save');
-    render();
+  } catch (err) {
+    alert('Erro ao salvar a gravação: ' + err.message);
   }
 });
 

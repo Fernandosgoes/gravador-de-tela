@@ -9,6 +9,7 @@ window.recorderApi = (function () {
   let cropRect = null;
   let screenStream = null;
   let micStream = null;
+  let audioContext = null;
 
   function drawFrame() {
     if (cropRect) {
@@ -44,7 +45,7 @@ window.recorderApi = (function () {
     canvas.width = rect ? rect.width : settings.width;
     canvas.height = rect ? rect.height : settings.height;
 
-    const audioContext = new AudioContext();
+    audioContext = new AudioContext();
     const destination = audioContext.createMediaStreamDestination();
     let hasAudio = false;
 
@@ -89,6 +90,7 @@ window.recorderApi = (function () {
         cancelAnimationFrame(rafId);
         screenStream.getTracks().forEach(t => t.stop());
         if (micStream) micStream.getTracks().forEach(t => t.stop());
+        if (audioContext) { audioContext.close(); audioContext = null; }
         resolve(new Blob(recordedChunks, { type: 'video/webm' }));
       };
       mediaRecorder.stop();
