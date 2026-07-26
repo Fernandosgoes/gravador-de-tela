@@ -36,7 +36,10 @@ function createAreaSelectWindow() {
       }
     });
 
+    let settled = false;
     const cleanup = (result) => {
+      if (settled) return;
+      settled = true;
       ipcMain.removeListener('areaselect:result', onResult);
       if (!win.isDestroyed()) win.close();
       resolve(result);
@@ -48,6 +51,7 @@ function createAreaSelectWindow() {
     };
 
     ipcMain.on('areaselect:result', onResult);
+    win.on('closed', () => cleanup(null));
     win.loadFile(require('path').join(__dirname, '../windows/areaselect/index.html'));
   });
 }
