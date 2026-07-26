@@ -11,6 +11,8 @@ function createToolbarWindow() {
     height: 90,
     alwaysOnTop: true,
     resizable: false,
+    transparent: true,
+    frame: false,
     webPreferences: {
       preload: require('path').join(__dirname, '../windows/toolbar/preload.js'),
       contextIsolation: true
