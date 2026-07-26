@@ -1,3 +1,4 @@
+// Keep in sync with src/lib/toolbarState.js — inlined here because the renderer has no require() without a bundler.
 const TRANSITIONS = {
   idle: { start: 'recording' },
   recording: { pause: 'paused', stop: 'preview' },
