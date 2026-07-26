@@ -132,21 +132,6 @@ let appSettings = {
   micId: null,
   systemAudioEnabled: true
 };
-let settingsWindow = null;
-
-function createSettingsWindow() {
-  if (settingsWindow) { settingsWindow.focus(); return; }
-  settingsWindow = new BrowserWindow({
-    width: 360,
-    height: 320,
-    webPreferences: {
-      preload: require('path').join(__dirname, '../windows/settings/preload.js'),
-      contextIsolation: true
-    }
-  });
-  settingsWindow.loadFile(require('path').join(__dirname, '../windows/settings/index.html'));
-  settingsWindow.on('closed', () => { settingsWindow = null; });
-}
 
 let currentRecordingState = 'idle';
 
@@ -186,7 +171,10 @@ app.whenReady().then(() => {
     appSettings = { ...appSettings, ...newSettings };
     BrowserWindow.getAllWindows().forEach(w => w.webContents.send('settings:changed', appSettings));
   });
-  ipcMain.on('open-settings', () => createSettingsWindow());
+  ipcMain.on('toolbar:resize', (event, { width, height }) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win) win.setSize(width, height, true);
+  });
   let lastSavedPath = null;
   ipcMain.handle('export:save', async (event, arrayBuffer) => {
     const win = BrowserWindow.fromWebContents(event.sender);
