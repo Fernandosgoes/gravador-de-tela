@@ -40,3 +40,37 @@ btnSave.addEventListener('click', () => { transition('save'); render(); });
 btnDelete.addEventListener('click', () => { transition('delete'); render(); });
 
 render();
+
+// Pen/Arrow overlay tool wiring — nextColor cycle inlined (mirrors src/lib/colorCycle.js)
+// because the renderer has no require() without a bundler; see Task 7 note above.
+const { nextColor } = (function () {
+  const CYCLE = [null, '#000000', '#0000FF', '#FF0000'];
+  return {
+    nextColor(current) {
+      const idx = CYCLE.indexOf(current);
+      if (idx === -1) return null;
+      return CYCLE[(idx + 1) % CYCLE.length];
+    }
+  };
+})();
+
+let penColor = null;
+let arrowOn = false;
+const btnPen = document.getElementById('btnPen');
+const btnArrow = document.getElementById('btnArrow');
+
+btnPen.addEventListener('click', () => {
+  penColor = nextColor(penColor);
+  arrowOn = false;
+  btnArrow.classList.remove('active');
+  btnPen.classList.toggle('active', !!penColor);
+  window.gravador.setOverlayTool({ tool: penColor ? 'pen' : 'none', color: penColor });
+});
+
+btnArrow.addEventListener('click', () => {
+  arrowOn = !arrowOn;
+  penColor = null;
+  btnPen.classList.remove('active');
+  btnArrow.classList.toggle('active', arrowOn);
+  window.gravador.setOverlayTool({ tool: arrowOn ? 'arrow' : 'none', color: '#000000' });
+});

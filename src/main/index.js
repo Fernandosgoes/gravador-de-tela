@@ -56,10 +56,42 @@ function createAreaSelectWindow() {
   });
 }
 
+let overlayWindow = null;
+
+function createOverlayWindow() {
+  const { screen } = require('electron');
+  const primary = screen.getPrimaryDisplay();
+  overlayWindow = new BrowserWindow({
+    x: 0,
+    y: 0,
+    width: primary.bounds.width,
+    height: primary.bounds.height,
+    transparent: true,
+    frame: false,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    focusable: true,
+    webPreferences: {
+      preload: require('path').join(__dirname, '../windows/overlay/preload.js'),
+      contextIsolation: true
+    }
+  });
+  overlayWindow.setIgnoreMouseEvents(true, { forward: true });
+  overlayWindow.loadFile(require('path').join(__dirname, '../windows/overlay/index.html'));
+  return overlayWindow;
+}
+
 app.whenReady().then(() => {
   ipcMain.handle('capture:list-sources', () => listSources());
   ipcMain.handle('areaselect:pick', () => createAreaSelectWindow());
+  ipcMain.on('overlay:set-tool', (event, payload) => {
+    if (overlayWindow) {
+      overlayWindow.setIgnoreMouseEvents(payload.tool === 'none', { forward: true });
+      overlayWindow.webContents.send('overlay:tool-changed', payload);
+    }
+  });
   createToolbarWindow();
+  createOverlayWindow();
 });
 
 app.on('window-all-closed', () => {
