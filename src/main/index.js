@@ -89,6 +89,43 @@ function createOverlayWindow() {
   return overlayWindow;
 }
 
+function createCountdownWindow() {
+  return new Promise((resolve) => {
+    const { screen } = require('electron');
+    const primary = screen.getPrimaryDisplay();
+    const win = new BrowserWindow({
+      x: 0,
+      y: 0,
+      width: primary.bounds.width,
+      height: primary.bounds.height,
+      transparent: true,
+      frame: false,
+      alwaysOnTop: true,
+      skipTaskbar: true,
+      focusable: false,
+      webPreferences: {
+        preload: require('path').join(__dirname, '../windows/countdown/preload.js'),
+        contextIsolation: true
+      }
+    });
+    win.loadFile(require('path').join(__dirname, '../windows/countdown/index.html'));
+
+    let settled = false;
+    function finish() {
+      if (settled) return;
+      settled = true;
+      ipcMain.removeListener('countdown:done', onDone);
+      if (!win.isDestroyed()) win.close();
+      resolve();
+    }
+    function onDone() {
+      finish();
+    }
+    ipcMain.on('countdown:done', onDone);
+    win.on('closed', finish);
+  });
+}
+
 let appSettings = {
   cameraId: null,
   micEnabled: true,
@@ -134,6 +171,7 @@ app.whenReady().then(() => {
   });
   ipcMain.handle('capture:list-sources', () => listSources());
   ipcMain.handle('areaselect:pick', () => createAreaSelectWindow());
+  ipcMain.handle('countdown:run', () => createCountdownWindow());
   ipcMain.on('overlay:set-tool', (event, payload) => {
     if (overlayWindow) {
       overlayWindow.setIgnoreMouseEvents(payload.tool === 'none', { forward: true });
