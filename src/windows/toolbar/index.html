@@ -1,22 +1,99 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="UTF-8">
   <title>Gravador de Tela</title>
   <link rel="stylesheet" href="toolbar.css">
 </head>
-<body>
-  <div id="controls">
-    <button id="btnStart">Iniciar</button>
-    <button id="btnPause" disabled>Pausar</button>
-    <button id="btnStop" disabled>Parar</button>
-    <button id="btnPen">Caneta</button>
-    <button id="btnArrow">Seta</button>
-    <button id="btnConfig">Config</button>
-    <button id="btnSave" style="display:none">Salvar</button>
-    <button id="btnDelete" style="display:none">Deletar</button>
+<body class="state-idle">
+  <div class="card" id="card">
+    <div class="expanded-view">
+      <div class="card-header" id="dragbar">
+        <span class="title">Gravador de Tela</span>
+        <span class="spacer"></span>
+        <button class="icon-btn" id="btnClose" title="Fechar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="card-body">
+        <div class="mode-row">
+          <button class="mode-block active" id="modeFullscreen">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 21h8M12 18v3"/></svg>
+            <span class="label">Tela Inteira</span>
+          </button>
+          <button class="mode-block" id="modeArea">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></svg>
+            <span class="label">Área Customizada</span>
+          </button>
+        </div>
+
+        <div class="field">
+          <label for="cameraSelect">Câmera</label>
+          <select id="cameraSelect"></select>
+        </div>
+
+        <div class="field">
+          <label for="micSelect">Microfone</label>
+          <select id="micSelect"></select>
+          <div class="toggle-row">
+            <span class="label">Áudio do sistema</span>
+            <label class="switch">
+              <input type="checkbox" id="sysAudioToggle">
+              <span class="switch-track"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="record-row">
+          <button class="record-btn" id="btnRecord" title="Gravar">
+            <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="9"/></svg>
+          </button>
+          <span class="rec-label">Gravar</span>
+        </div>
+
+        <div class="preview-actions" id="previewActions">
+          <button class="btn-save" id="btnSave">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+            Salvar
+          </button>
+          <button class="btn-discard" id="btnDiscard">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            Descartar
+          </button>
+        </div>
+
+        <div class="tool-row">
+          <button class="icon-btn" id="btnPen" title="Caneta">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+          </button>
+          <button class="icon-btn" id="btnArrow" title="Seta">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M8 7h9v9"/></svg>
+          </button>
+          <button class="icon-btn" id="btnOpenFolder" title="Abrir pasta da última gravação" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="compact-view">
+      <div class="rec-dot"></div>
+      <span class="timer" id="pillTimer">00:00</span>
+      <div class="pill-controls">
+        <button class="icon-btn" id="btnPause" title="Pausar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+        </button>
+        <button class="icon-btn" id="btnStop" title="Parar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>
+        </button>
+      </div>
+    </div>
   </div>
+
   <canvas id="compositeCanvas" style="display:none"></canvas>
   <video id="screenVideo" style="display:none" autoplay muted></video>
+
   <script src="../../renderer/recorder.js"></script>
   <script src="toolbar.js"></script>
 </body>
