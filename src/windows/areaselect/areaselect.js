@@ -83,15 +83,27 @@ function adjustFromHandle(e) {
   const bottom = rect.y + rect.height;
 
   if (activeHandle.includes('n')) {
-    rect.height = bottom - e.clientY;
-    rect.y = e.clientY;
+    const newHeight = bottom - e.clientY;
+    if (newHeight >= 10) {
+      rect.height = newHeight;
+      rect.y = e.clientY;
+    } else {
+      rect.height = 10;
+      rect.y = bottom - 10;
+    }
   }
   if (activeHandle.includes('s')) {
     rect.height = e.clientY - rect.y;
   }
   if (activeHandle.includes('w')) {
-    rect.width = right - e.clientX;
-    rect.x = e.clientX;
+    const newWidth = right - e.clientX;
+    if (newWidth >= 10) {
+      rect.width = newWidth;
+      rect.x = e.clientX;
+    } else {
+      rect.width = 10;
+      rect.x = right - 10;
+    }
   }
   if (activeHandle.includes('e')) {
     rect.width = e.clientX - rect.x;
