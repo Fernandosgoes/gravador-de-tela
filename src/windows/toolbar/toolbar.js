@@ -39,9 +39,19 @@ let lastRecordingBlob = null;
 let recordingStartedAt = null;
 let timerInterval = null;
 let hasSavedThisSession = false;
+let recordingStarting = false;
 
 function render() {
   body.className = `state-${state}`;
+
+  if (state === 'idle' && captureMode !== 'fullscreen') {
+    // Returning to idle (e.g. after a completed Área Customizada recording is
+    // saved/discarded) must not leave capture mode stuck on 'area' — otherwise
+    // the big Gravar button stays permanently disabled (see Finding 1).
+    captureMode = 'fullscreen';
+    modeFullscreen.classList.add('active');
+    modeArea.classList.remove('active');
+  }
 
   const isIdleOrPreview = state === 'idle' || state === 'preview';
   body.classList.toggle('compact', !isIdleOrPreview);
@@ -105,18 +115,24 @@ modeArea.addEventListener('click', async () => {
 
 // ---- Recording flow ----
 async function beginRecording(cropRect) {
-  const sources = await window.gravador.listSources();
-  const screenSource = sources.find((s) => s.name.toLowerCase().includes('screen')) || sources[0];
-  if (!screenSource) {
-    alert('Nenhuma tela encontrada para gravar.');
-    return;
-  }
+  if (recordingStarting) return;
+  recordingStarting = true;
+  try {
+    const sources = await window.gravador.listSources();
+    const screenSource = sources.find((s) => s.name.toLowerCase().includes('screen')) || sources[0];
+    if (!screenSource) {
+      alert('Nenhuma tela encontrada para gravar.');
+      return;
+    }
 
-  await window.gravador.runCountdown();
-  await window.recorderApi.start(screenSource.id, cropRect);
-  transition('start');
-  startTimer();
-  render();
+    await window.gravador.runCountdown();
+    await window.recorderApi.start(screenSource.id, cropRect);
+    transition('start');
+    startTimer();
+    render();
+  } finally {
+    recordingStarting = false;
+  }
 }
 
 btnRecord.addEventListener('click', async () => {
