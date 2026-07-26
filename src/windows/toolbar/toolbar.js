@@ -30,12 +30,39 @@ function render() {
   btnDelete.style.display = inPreview ? 'inline-block' : 'none';
 }
 
-btnStart.addEventListener('click', () => { transition('start'); render(); });
-btnPause.addEventListener('click', () => {
-  transition(state === 'paused' ? 'resume' : 'pause');
+btnStart.addEventListener('click', async () => {
+  const sources = await window.gravador.listSources();
+  const screenSource = sources.find(s => s.name.toLowerCase().includes('screen')) || sources[0];
+  if (!screenSource) {
+    alert('Nenhuma tela encontrada para gravar.');
+    return;
+  }
+  const useArea = confirm('Gravar área customizada? Cancelar = tela inteira.');
+  const cropRect = useArea ? await window.gravador.pickArea() : null;
+  if (useArea && !cropRect) return; // user pressed Escape in area picker
+
+  await window.recorderApi.start(screenSource.id, cropRect);
+  transition('start');
   render();
 });
-btnStop.addEventListener('click', () => { transition('stop'); render(); });
+
+btnPause.addEventListener('click', () => {
+  if (state === 'recording') {
+    window.recorderApi.pause();
+    transition('pause');
+  } else if (state === 'paused') {
+    window.recorderApi.resume();
+    transition('resume');
+  }
+  render();
+});
+
+let lastRecordingBlob = null;
+btnStop.addEventListener('click', async () => {
+  lastRecordingBlob = await window.recorderApi.stop();
+  transition('stop');
+  render();
+});
 btnSave.addEventListener('click', () => { transition('save'); render(); });
 btnDelete.addEventListener('click', () => { transition('delete'); render(); });
 
