@@ -1,15 +1,103 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="UTF-8">
+  <title>Selecionar Área</title>
   <style>
-    html, body { margin: 0; padding: 0; background: rgba(0,0,0,0.15); overflow: hidden; cursor: crosshair; }
-    #rect { position: absolute; border: 2px dashed #4caf50; background: rgba(76,175,80,0.15); display: none; }
-    #hint { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); color: #fff; font-family: sans-serif; }
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.55);
+      cursor: crosshair;
+      overflow: hidden;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    #hint {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #E4E4E7;
+      font-size: 13px;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 6px 14px;
+      border-radius: 8px;
+      pointer-events: none;
+    }
+    #rect {
+      position: absolute;
+      display: none;
+      border: 1.5px solid #30D158;
+      box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.55);
+      background: transparent;
+    }
+    .handle {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      margin: -5px;
+      background: #30D158;
+      border: 1.5px solid #0E0E10;
+      border-radius: 50%;
+    }
+    .handle[data-pos="nw"] { left: 0; top: 0; cursor: nwse-resize; }
+    .handle[data-pos="n"]  { left: 50%; top: 0; cursor: ns-resize; }
+    .handle[data-pos="ne"] { left: 100%; top: 0; cursor: nesw-resize; }
+    .handle[data-pos="e"]  { left: 100%; top: 50%; cursor: ew-resize; }
+    .handle[data-pos="se"] { left: 100%; top: 100%; cursor: nwse-resize; }
+    .handle[data-pos="s"]  { left: 50%; top: 100%; cursor: ns-resize; }
+    .handle[data-pos="sw"] { left: 0; top: 100%; cursor: nesw-resize; }
+    .handle[data-pos="w"]  { left: 0; top: 50%; cursor: ew-resize; }
+    #dimLabel {
+      position: absolute;
+      display: none;
+      top: -26px;
+      left: 0;
+      font-family: 'SFMono-Regular', Consolas, monospace;
+      font-size: 11px;
+      color: #fff;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 3px 7px;
+      border-radius: 5px;
+      white-space: nowrap;
+    }
+    #startBtn {
+      position: absolute;
+      display: none;
+      bottom: -44px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #30D158;
+      color: #0E2A14;
+      font-size: 12.5px;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+    #startBtn.visible { display: flex; }
   </style>
 </head>
 <body>
   <div id="hint">Arraste para selecionar a área. Esc para cancelar.</div>
-  <div id="rect"></div>
+  <div id="rect">
+    <div id="dimLabel"></div>
+    <div class="handle" data-pos="nw"></div>
+    <div class="handle" data-pos="n"></div>
+    <div class="handle" data-pos="ne"></div>
+    <div class="handle" data-pos="e"></div>
+    <div class="handle" data-pos="se"></div>
+    <div class="handle" data-pos="s"></div>
+    <div class="handle" data-pos="sw"></div>
+    <div class="handle" data-pos="w"></div>
+    <button id="startBtn">Iniciar gravação</button>
+  </div>
   <script src="areaselect.js"></script>
 </body>
 </html>
