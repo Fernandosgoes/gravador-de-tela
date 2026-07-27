@@ -344,6 +344,10 @@ async function populateDevices() {
   });
 
   micSelect.innerHTML = '';
+  const noMicOpt = document.createElement('option');
+  noMicOpt.value = '';
+  noMicOpt.textContent = 'Nenhum microfone';
+  micSelect.appendChild(noMicOpt);
   devices.filter((d) => d.kind === 'audioinput').forEach((d) => {
     const opt = document.createElement('option');
     opt.value = d.deviceId;

@@ -3,6 +3,8 @@ const { listSources } = require('./capture');
 const { toCropParams } = require('../lib/cropMath');
 const { saveRecording } = require('./export');
 
+app.setName('Gravador de Tela');
+
 let toolbarWindow = null;
 app.isQuitting = false;
 
