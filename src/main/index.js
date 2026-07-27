@@ -316,16 +316,6 @@ app.on('will-quit', () => {
 app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
 
-  // Safety net: no matter what state the window stack is in, Escape always
-  // forces any active annotation tool off. Registered globally (not a
-  // renderer keydown listener) so it works even if the overlay window is
-  // covering the toolbar's own buttons.
-  globalShortcut.register('Escape', () => {
-    if (toolbarWindow && !toolbarWindow.isDestroyed()) {
-      toolbarWindow.webContents.send('tool:force-none');
-    }
-  });
-
   applyRecordShortcut(appSettings.shortcuts.toggleRecord);
 
   ipcMain.on('recording:state-changed', (event, state) => {
@@ -355,6 +345,19 @@ app.whenReady().then(() => {
     // without the toolbar permanently outranking the user's other windows.
     if (toolbarWindow && !toolbarWindow.isDestroyed()) {
       toolbarWindow.setAlwaysOnTop(payload.tool !== 'none', 'screen-saver');
+    }
+    // Escape as a safety net to force the tool off only while a tool is active —
+    // registering it globally at all times hijacks Esc from every other app on
+    // the system (e.g. Lightshot's capture overlay, Windows' own snipping tool,
+    // which rely on Esc to cancel/close).
+    if (payload.tool !== 'none') {
+      globalShortcut.register('Escape', () => {
+        if (toolbarWindow && !toolbarWindow.isDestroyed()) {
+          toolbarWindow.webContents.send('tool:force-none');
+        }
+      });
+    } else {
+      globalShortcut.unregister('Escape');
     }
   });
   ipcMain.on('overlay:set-ignore-mouse', (event, ignore) => {
