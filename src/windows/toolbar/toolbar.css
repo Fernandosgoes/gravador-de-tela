@@ -1,7 +1,325 @@
-body { margin: 0; font-family: sans-serif; background: #222; color: #eee; overflow: hidden; border: 1px solid #444; }
-#dragbar { display: flex; align-items: center; justify-content: space-between; padding: 4px 8px; background: #2f2f2f; font-size: 12px; -webkit-app-region: drag; }
-#btnClose { -webkit-app-region: no-drag; background: transparent; border: none; color: #eee; font-size: 16px; cursor: pointer; padding: 0 6px; }
-#btnClose:hover { color: #ff5555; }
-#controls { display: flex; flex-wrap: nowrap; gap: 6px; padding: 10px; white-space: nowrap; }
-button { padding: 6px 10px; cursor: pointer; flex-shrink: 0; }
-button.active { outline: 2px solid #4caf50; }
+* { box-sizing: border-box; }
+
+/* An SVG with no width/height in a flex container renders at its huge intrinsic
+   size. Every icon here is nominally 24x24; scoped rules below override this. */
+svg { width: 16px; height: 16px; }
+
+html, body {
+  margin: 0;
+  background: transparent;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #E4E4E7;
+  overflow: hidden;
+}
+
+/* Window dragging is done in JS (see toolbar.js initWindowDrag) — the native
+   -webkit-app-region: drag is broken on Windows with transparent:true windows
+   (Chromium renders a ghost outline and the window never follows the cursor). */
+.card-header:active, .compact-view:active { cursor: grabbing; }
+
+.card {
+  position: relative;
+  background: #232326;
+  border: 1px solid #2E2E32;
+  border-radius: 14px;
+  box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.35);
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.settings-panel {
+  display: none;
+  position: absolute;
+  inset: 0;
+  background: #232326;
+  flex-direction: column;
+  padding: 14px;
+  gap: 12px;
+  z-index: 5;
+}
+body.settings-open .settings-panel { display: flex; }
+.settings-header { display: flex; align-items: center; justify-content: space-between; }
+.settings-header .title { font-size: 12.5px; font-weight: 600; color: #E4E4E7; }
+#shortcutInput {
+  border: 1px solid #2E2E32;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  color: #E4E4E7;
+  background: #1E1E21;
+  font-family: inherit;
+  cursor: pointer;
+  width: 100%;
+}
+body:not(.state-idle) #btnSettings { display: none; }
+
+/* body state controls which view is visible; window is resized to match by toolbar.js */
+.compact-view { display: none; }
+body.state-recording .expanded-view,
+body.state-paused .expanded-view { display: none; }
+body.state-recording .compact-view,
+body.state-paused .compact-view { display: flex; }
+
+.expanded-view {
+  display: flex;
+  flex-direction: column;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 14px 10px;
+}
+
+.card-header .title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #E4E4E7;
+  letter-spacing: 0.01em;
+}
+
+.card-header .spacer { flex: 1; }
+
+.icon-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8A8A93;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+.icon-btn svg { width: 15px; height: 15px; }
+.icon-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.06); color: #E4E4E7; }
+.icon-btn:disabled { opacity: 0.35; cursor: default; }
+.icon-btn.active { color: #FF6A61; background: rgba(255, 59, 48, 0.12); }
+
+.card-body {
+  padding: 4px 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mode-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.mode-block {
+  border: 1px solid #2E2E32;
+  border-radius: 10px;
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: #8A8A93;
+  background: rgba(255, 255, 255, 0.015);
+  cursor: pointer;
+}
+.mode-block svg { width: 18px; height: 18px; }
+.mode-block .label { font-size: 11.5px; font-weight: 500; }
+.mode-block.active {
+  border-color: rgba(255, 59, 48, 0.5);
+  background: rgba(255, 59, 48, 0.08);
+  color: #FF6A61;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.field label {
+  font-size: 10.5px;
+  font-weight: 500;
+  color: #8A8A93;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.field select {
+  border: 1px solid #2E2E32;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  color: #E4E4E7;
+  background: #1E1E21;
+  font-family: inherit;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 2px 0;
+}
+.toggle-row .label { font-size: 12px; color: #8A8A93; }
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 32px;
+  height: 18px;
+}
+.switch input { opacity: 0; width: 0; height: 0; }
+.switch-track {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  transition: background 0.15s;
+}
+.switch-track::after {
+  content: '';
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: #C8C8CE;
+  transition: left 0.15s, background 0.15s;
+}
+.switch input:checked + .switch-track { background: rgba(48, 209, 88, 0.35); }
+.switch input:checked + .switch-track::after { left: 16px; background: #30D158; }
+
+.record-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0 2px;
+}
+
+.record-btn {
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  background: #FF3B30;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: pulse 2.2s ease-out infinite;
+}
+.record-btn svg { width: 22px; height: 22px; }
+.record-btn:disabled { opacity: 0.4; cursor: default; animation: none; }
+
+@keyframes pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.45); }
+  70%  { box-shadow: 0 0 0 14px rgba(255, 59, 48, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .record-btn { animation: none; }
+}
+
+.rec-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #8A8A93;
+  letter-spacing: 0.02em;
+}
+
+.preview-actions {
+  display: none;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 6px 0 2px;
+}
+body.state-preview .preview-actions { display: grid; }
+body.state-preview .record-row,
+body.state-preview .mode-row,
+body.state-preview .field { display: none; }
+
+.btn-save, .btn-discard {
+  border: 1px solid transparent;
+  border-radius: 9px;
+  padding: 10px 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.btn-save svg, .btn-discard svg { width: 15px; height: 15px; flex-shrink: 0; }
+.btn-save { background: #30D158; color: #0E2A14; }
+.btn-discard {
+  border-color: rgba(255, 59, 48, 0.45);
+  color: #FF6A61;
+  background: rgba(255, 59, 48, 0.06);
+}
+
+
+/* ---------- compact pill (recording/paused) ---------- */
+.compact-view {
+  align-items: center;
+  padding: 0 10px;
+  gap: 8px;
+  height: 100%;
+}
+
+.rec-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #FF3B30;
+  flex-shrink: 0;
+  animation: dotpulse 1.4s ease-in-out infinite;
+}
+@keyframes dotpulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rec-dot { animation: none; }
+}
+body.state-paused .rec-dot { animation: none; opacity: 0.4; }
+
+.timer {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+  font-size: 14px;
+  font-weight: 600;
+  color: #E4E4E7;
+  font-variant-numeric: tabular-nums;
+  flex: 0 0 auto;
+  margin-right: 2px;
+}
+
+.compact-tools {
+  display: flex;
+  gap: 3px;
+}
+
+.pill-divider {
+  width: 1px;
+  height: 18px;
+  background: #2E2E32;
+  flex-shrink: 0;
+}
+
+.pill-controls {
+  display: flex;
+  gap: 4px;
+}
+.compact-tools .icon-btn,
+.pill-controls .icon-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.04);
+}
+.icon-btn.danger { color: #FF6A61; }
+.icon-btn.danger:hover:not(:disabled) {
+  background: rgba(255, 59, 48, 0.14);
+  color: #FF3B30;
+}

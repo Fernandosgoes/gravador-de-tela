@@ -12,10 +12,16 @@ window.recorderApi = (function () {
   let audioContext = null;
 
   function drawFrame() {
-    if (cropRect) {
-      ctx.drawImage(screenVideo, cropRect.x, cropRect.y, cropRect.width, cropRect.height, 0, 0, canvas.width, canvas.height);
-    } else {
-      ctx.drawImage(screenVideo, 0, 0, canvas.width, canvas.height);
+    try {
+      if (cropRect) {
+        ctx.drawImage(screenVideo, cropRect.x, cropRect.y, cropRect.width, cropRect.height, 0, 0, canvas.width, canvas.height);
+      } else {
+        ctx.drawImage(screenVideo, 0, 0, canvas.width, canvas.height);
+      }
+    } catch (err) {
+      // An exception here (e.g. transient zero-size source rect) would otherwise
+      // kill the rAF loop silently, leaving the recording with no video frames.
+      console.error('drawFrame failed, skipping this frame:', err);
     }
     rafId = requestAnimationFrame(drawFrame);
   }
@@ -84,18 +90,44 @@ window.recorderApi = (function () {
     mediaRecorder.resume();
   }
 
+  function teardown() {
+    cancelAnimationFrame(rafId);
+    rafId = null;
+    if (screenStream) screenStream.getTracks().forEach(t => t.stop());
+    if (micStream) micStream.getTracks().forEach(t => t.stop());
+    if (audioContext) { audioContext.close(); audioContext = null; }
+    screenStream = null;
+    micStream = null;
+  }
+
   function stop() {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       mediaRecorder.onstop = () => {
-        cancelAnimationFrame(rafId);
-        screenStream.getTracks().forEach(t => t.stop());
-        if (micStream) micStream.getTracks().forEach(t => t.stop());
-        if (audioContext) { audioContext.close(); audioContext = null; }
-        resolve(new Blob(recordedChunks, { type: 'video/webm' }));
+        teardown();
+        const blob = new Blob(recordedChunks, { type: 'video/webm' });
+        if (blob.size === 0) {
+          reject(new Error('A gravação não capturou nenhum dado de vídeo.'));
+          return;
+        }
+        resolve(blob);
       };
       mediaRecorder.stop();
     });
   }
 
-  return { start, pause, resume, stop };
+  // Aborts the recording and drops the captured data. Unlike stop(), it never
+  // produces a Blob — the chunks are discarded before onstop can assemble them.
+  function cancel() {
+    return new Promise((resolve) => {
+      mediaRecorder.onstop = () => {
+        recordedChunks = [];
+        teardown();
+        resolve();
+      };
+      if (mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+      else { teardown(); resolve(); }
+    });
+  }
+
+  return { start, pause, resume, stop, cancel };
 })();
