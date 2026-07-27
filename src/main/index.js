@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Menu } = require('electron');
 const { listSources } = require('./capture');
 const { toCropParams } = require('../lib/cropMath');
 const { saveRecording } = require('./export');
@@ -7,10 +7,11 @@ let toolbarWindow = null;
 
 function createToolbarWindow() {
   const win = new BrowserWindow({
-    width: 420,
-    height: 90,
+    width: 560,
+    height: 110,
     alwaysOnTop: true,
     resizable: false,
+    frame: false,
     webPreferences: {
       preload: require('path').join(__dirname, '../windows/toolbar/preload.js'),
       contextIsolation: true
@@ -129,6 +130,7 @@ app.on('before-quit', (event) => {
 });
 
 app.whenReady().then(() => {
+  Menu.setApplicationMenu(null);
   ipcMain.on('recording:state-changed', (event, state) => {
     currentRecordingState = state;
   });

@@ -1,4 +1,7 @@
-body { margin: 0; font-family: sans-serif; background: #222; color: #eee; }
-#controls { display: flex; gap: 6px; padding: 10px; }
-button { padding: 6px 10px; cursor: pointer; }
+body { margin: 0; font-family: sans-serif; background: #222; color: #eee; overflow: hidden; border: 1px solid #444; }
+#dragbar { display: flex; align-items: center; justify-content: space-between; padding: 4px 8px; background: #2f2f2f; font-size: 12px; -webkit-app-region: drag; }
+#btnClose { -webkit-app-region: no-drag; background: transparent; border: none; color: #eee; font-size: 16px; cursor: pointer; padding: 0 6px; }
+#btnClose:hover { color: #ff5555; }
+#controls { display: flex; flex-wrap: nowrap; gap: 6px; padding: 10px; white-space: nowrap; }
+button { padding: 6px 10px; cursor: pointer; flex-shrink: 0; }
 button.active { outline: 2px solid #4caf50; }

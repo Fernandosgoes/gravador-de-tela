@@ -6,7 +6,8 @@
   "scripts": {
     "start": "electron .",
     "test": "node --test \"test/**/*.test.js\"",
-    "build": "electron-builder"
+    "build": "electron-builder --win portable",
+    "release": "node scripts/make-release.js"
   },
   "devDependencies": {
     "electron": "^32.0.0",
@@ -19,7 +20,11 @@
     "appId": "com.gravadordetela.app",
     "productName": "Gravador de Tela",
     "win": {
-      "target": "portable"
+      "target": "portable",
+      "signAndEditExecutable": false
+    },
+    "portable": {
+      "artifactName": "Gravador-de-Tela.exe"
     },
     "files": [
       "src/**/*",

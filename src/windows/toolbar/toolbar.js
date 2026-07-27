@@ -127,3 +127,7 @@ btnArrow.addEventListener('click', () => {
 document.getElementById('btnConfig').addEventListener('click', () => {
   window.gravador.openSettings();
 });
+
+document.getElementById('btnClose').addEventListener('click', () => {
+  window.close();
+});
