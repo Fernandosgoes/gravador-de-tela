@@ -6,7 +6,7 @@ const ctx = canvas.getContext('2d');
 const FADE_MS = 3000;
 let currentTool = 'none';
 let currentColor = '#000000';
-let strokes = []; // { type: 'pen'|'arrow', points: [{x,y}], color, addedAt }
+let strokes = []; // { type: 'pen'|'arrow'|'rect', points: [{x,y}], color, addedAt }
 let drawing = false;
 let activeStroke = null;
 
@@ -29,7 +29,8 @@ canvas.addEventListener('mousemove', (e) => {
   if (!drawing || !activeStroke) return;
   if (currentTool === 'pen') {
     activeStroke.points.push(pointFromEvent(e));
-  } else if (currentTool === 'arrow') {
+  } else if (currentTool === 'arrow' || currentTool === 'rect') {
+    // Both are two-point shapes: [anchor, current cursor].
     activeStroke.points[1] = pointFromEvent(e);
   }
 });
@@ -77,6 +78,16 @@ function render() {
       ctx.lineTo(to.x, to.y);
       ctx.stroke();
       drawArrowHead(from, to);
+    } else if (stroke.type === 'rect') {
+      const [from, to] = stroke.points;
+      if (!to) continue;
+      // Outline only — never fill, so the rectangle never hides screen content.
+      ctx.lineJoin = 'miter';
+      ctx.strokeRect(
+        Math.min(from.x, to.x), Math.min(from.y, to.y),
+        Math.abs(to.x - from.x), Math.abs(to.y - from.y)
+      );
+      ctx.lineJoin = 'round';
     }
   }
   requestAnimationFrame(render);

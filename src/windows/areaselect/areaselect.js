@@ -1,6 +1,9 @@
 const rectEl = document.getElementById('rect');
 const dimLabel = document.getElementById('dimLabel');
+const actions = document.getElementById('actions');
 const startBtn = document.getElementById('startBtn');
+const cancelBtn = document.getElementById('cancelBtn');
+const cancelTopBtn = document.getElementById('cancelTopBtn');
 const hint = document.getElementById('hint');
 
 let phase = 'drawing'; // 'drawing' | 'adjusting'
@@ -17,13 +20,18 @@ function applyRectStyle() {
   rectEl.style.width = rect.width + 'px';
   rectEl.style.height = rect.height + 'px';
   dimLabel.textContent = `${Math.round(rect.width)} × ${Math.round(rect.height)}`;
+
+  // Flip the action buttons above the rect when there isn't ~60px of room below —
+  // otherwise they can end up covered by the Windows taskbar or off-screen.
+  const spaceBelow = window.innerHeight - (rect.y + rect.height);
+  actions.classList.toggle('flip-up', spaceBelow < 60);
 }
 
 function enterAdjustMode() {
   phase = 'adjusting';
   hint.style.display = 'none';
   dimLabel.style.display = 'block';
-  startBtn.classList.add('visible');
+  actions.classList.add('visible');
 }
 
 // ---- Phase 1: initial draw gesture ----
@@ -121,7 +129,7 @@ let moveOffsetY = 0;
 
 rectEl.addEventListener('mousedown', (e) => {
   if (phase !== 'adjusting') return;
-  if (e.target.classList.contains('handle') || e.target === startBtn) return;
+  if (e.target.classList.contains('handle') || e.target.closest('#actions')) return;
   movingRect = true;
   moveOffsetX = e.clientX - rect.x;
   moveOffsetY = e.clientY - rect.y;
@@ -133,8 +141,16 @@ startBtn.addEventListener('click', (e) => {
   window.areaSelectBridge.submit({ x: rect.x, y: rect.y, width: rect.width, height: rect.height });
 });
 
+function cancel(e) {
+  if (e) e.stopPropagation();
+  window.areaSelectBridge.submit(null);
+}
+cancelBtn.addEventListener('click', cancel);
+// mousedown must not reach the document-level listener, or it would start a
+// draw gesture underneath this always-visible button.
+cancelTopBtn.addEventListener('mousedown', (e) => e.stopPropagation());
+cancelTopBtn.addEventListener('click', cancel);
+
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') {
-    window.areaSelectBridge.submit(null);
-  }
+  if (e.key === 'Escape') cancel();
 });

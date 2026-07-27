@@ -25,6 +25,21 @@
       border-radius: 8px;
       pointer-events: none;
     }
+    #cancelTopBtn {
+      position: fixed;
+      top: 14px;
+      right: 16px;
+      background: rgba(0, 0, 0, 0.55);
+      color: #E4E4E7;
+      border: 1px solid #2E2E32;
+      font-size: 12.5px;
+      font-weight: 600;
+      font-family: inherit;
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      z-index: 10;
+    }
     #rect {
       position: absolute;
       display: none;
@@ -62,29 +77,37 @@
       border-radius: 5px;
       white-space: nowrap;
     }
-    #startBtn {
+    #actions {
       position: absolute;
       display: none;
       bottom: -44px;
       left: 50%;
       transform: translateX(-50%);
-      background: #30D158;
-      color: #0E2A14;
+      gap: 8px;
+      white-space: nowrap;
+    }
+    #actions.visible { display: flex; }
+    #actions.flip-up { bottom: auto; top: -44px; }
+    #startBtn, #cancelBtn {
       font-size: 12.5px;
       font-weight: 600;
       padding: 8px 16px;
       border-radius: 8px;
-      border: none;
       cursor: pointer;
-      align-items: center;
-      gap: 6px;
-      white-space: nowrap;
+      font-family: inherit;
+      border: 1px solid transparent;
     }
-    #startBtn.visible { display: flex; }
+    #startBtn { background: #30D158; color: #0E2A14; }
+    #cancelBtn {
+      background: rgba(0, 0, 0, 0.55);
+      color: #E4E4E7;
+      border-color: #2E2E32;
+    }
   </style>
 </head>
 <body>
   <div id="hint">Arraste para selecionar a área. Esc para cancelar.</div>
+  <button id="cancelTopBtn">Cancelar (Esc)</button>
   <div id="rect">
     <div id="dimLabel"></div>
     <div class="handle" data-pos="nw"></div>
@@ -95,7 +118,10 @@
     <div class="handle" data-pos="s"></div>
     <div class="handle" data-pos="sw"></div>
     <div class="handle" data-pos="w"></div>
-    <button id="startBtn">Iniciar gravação</button>
+    <div id="actions">
+      <button id="startBtn">Iniciar gravação</button>
+      <button id="cancelBtn">Cancelar</button>
+    </div>
   </div>
   <script src="areaselect.js"></script>
 </body>

@@ -20,11 +20,15 @@
     "appId": "com.gravadordetela.app",
     "productName": "Gravador de Tela",
     "win": {
-      "target": "portable"
+      "target": "portable",
+      "icon": "build/icon.ico"
     },
     "files": [
       "src/**/*",
       "package.json"
+    ],
+    "extraResources": [
+      "build/icon.ico"
     ],
     "asarUnpack": [
       "**/node_modules/ffmpeg-static/**"

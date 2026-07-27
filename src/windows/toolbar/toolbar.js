@@ -1,8 +1,8 @@
 // Keep in sync with src/lib/toolbarState.js — inlined here because the renderer has no require() without a bundler.
 const TRANSITIONS = {
   idle: { start: 'recording' },
-  recording: { pause: 'paused', stop: 'preview' },
-  paused: { resume: 'recording', stop: 'preview' },
+  recording: { pause: 'paused', stop: 'preview', cancel: 'idle' },
+  paused: { resume: 'recording', stop: 'preview', cancel: 'idle' },
   preview: { save: 'idle', delete: 'idle' }
 };
 
@@ -15,7 +15,7 @@ function transition(action) {
 }
 
 const EXPANDED_SIZE = { width: 296, height: 420 };
-const COMPACT_SIZE = { width: 176, height: 48 };
+const COMPACT_SIZE = { width: 300, height: 48 };
 
 const body = document.body;
 const modeFullscreen = document.getElementById('modeFullscreen');
@@ -29,10 +29,14 @@ const btnOpenFolder = document.getElementById('btnOpenFolder');
 const btnClose = document.getElementById('btnClose');
 const btnPen = document.getElementById('btnPen');
 const btnArrow = document.getElementById('btnArrow');
+const btnCancel = document.getElementById('btnCancel');
 const cameraSelect = document.getElementById('cameraSelect');
 const micSelect = document.getElementById('micSelect');
 const sysAudioToggle = document.getElementById('sysAudioToggle');
 const pillTimer = document.getElementById('pillTimer');
+const btnSettings = document.getElementById('btnSettings');
+const btnCloseSettings = document.getElementById('btnCloseSettings');
+const shortcutInput = document.getElementById('shortcutInput');
 
 let captureMode = 'fullscreen'; // 'fullscreen' | 'area'
 let lastRecordingBlob = null;
@@ -103,18 +107,20 @@ modeArea.addEventListener('click', async () => {
   modeFullscreen.classList.remove('active');
   render();
 
-  const cropRect = await window.gravador.pickArea();
-  if (!cropRect) {
+  const picked = await window.gravador.pickArea();
+  if (!picked) {
     // user pressed Escape — revert to fullscreen mode
     resetToFullscreenMode();
     render();
     return;
   }
-  await beginRecording(cropRect);
+  await beginRecording(picked.physical, picked.logical);
 });
 
 // ---- Recording flow ----
-async function beginRecording(cropRect) {
+// cropRect is in physical pixels (matches the desktopCapturer stream resolution);
+// logicalRect is in CSS pixels (matches what the areaframe overlay positions with).
+async function beginRecording(cropRect, logicalRect) {
   if (recordingStarting) return;
   recordingStarting = true;
   try {
@@ -127,6 +133,7 @@ async function beginRecording(cropRect) {
 
     await window.gravador.runCountdown();
     await window.recorderApi.start(screenSource.id, cropRect);
+    if (logicalRect) window.gravador.showAreaFrame(logicalRect);
     transition('start');
     startTimer();
     render();
@@ -137,7 +144,7 @@ async function beginRecording(cropRect) {
 
 btnRecord.addEventListener('click', async () => {
   if (state !== 'idle' || captureMode !== 'fullscreen') return;
-  await beginRecording(null);
+  await beginRecording(null, null);
 });
 
 btnPause.addEventListener('click', () => {
@@ -152,20 +159,43 @@ btnPause.addEventListener('click', () => {
 });
 
 btnStop.addEventListener('click', async () => {
-  lastRecordingBlob = await window.recorderApi.stop();
+  try {
+    lastRecordingBlob = await window.recorderApi.stop();
+  } catch (err) {
+    alert('Erro ao finalizar a gravação: ' + err.message);
+    lastRecordingBlob = null;
+  }
   stopTimer();
+  applyTool('none', toolColor); // else the overlay keeps swallowing clicks after recording ends
+  window.gravador.hideAreaFrame(); // no-op in fullscreen mode, idempotent otherwise
   transition('stop');
   render();
 });
 
+btnCancel.addEventListener('click', async () => {
+  if (state !== 'recording' && state !== 'paused') return;
+  // Intentionally no confirmation dialog — cancel is meant to be immediate.
+  await window.recorderApi.cancel();
+  lastRecordingBlob = null;
+  stopTimer();
+  applyTool('none', toolColor);
+  window.gravador.hideAreaFrame();
+  transition('cancel');
+  resetToFullscreenMode();
+  render();
+});
+
+let savingRecording = false;
+
 btnSave.addEventListener('click', async () => {
-  if (!lastRecordingBlob) return;
+  if (!lastRecordingBlob || savingRecording) return;
+  savingRecording = true;
   try {
     const arrayBuffer = await lastRecordingBlob.arrayBuffer();
     const result = await window.gravador.saveRecording(arrayBuffer);
     if (result.success) {
       if (result.format === 'webm') {
-        alert('Não foi possível converter para MP4, salvo como WebM: ' + result.path);
+        alert('Não foi possível converter para MP4, salvo como WebM: ' + result.path + '\n\nMotivo: ' + result.warning);
       }
       hasSavedThisSession = true;
       btnOpenFolder.disabled = false;
@@ -173,9 +203,13 @@ btnSave.addEventListener('click', async () => {
       transition('save');
       resetToFullscreenMode();
       render();
+    } else if (result.error) {
+      alert('Não foi possível salvar a gravação: ' + result.error);
     }
   } catch (err) {
     alert('Erro ao salvar a gravação: ' + err.message);
+  } finally {
+    savingRecording = false;
   }
 });
 
@@ -194,7 +228,7 @@ btnClose.addEventListener('click', () => {
   window.close();
 });
 
-// ---- Pen/Arrow overlay tool wiring — nextColor cycle inlined (mirrors src/lib/colorCycle.js) ----
+// ---- Overlay tool state — nextColor cycle inlined (mirrors src/lib/colorCycle.js) ----
 const { nextColor } = (function () {
   const CYCLE = [null, '#000000', '#0000FF', '#FF0000'];
   return {
@@ -206,24 +240,92 @@ const { nextColor } = (function () {
   };
 })();
 
-let penColor = null;
-let arrowOn = false;
+let activeTool = 'none';       // 'none' | 'pen' | 'arrow' | 'rect'
+let toolColor = '#000000';
 
-btnPen.addEventListener('click', () => {
-  penColor = nextColor(penColor);
-  arrowOn = false;
-  btnArrow.classList.remove('active');
-  btnPen.classList.toggle('active', !!penColor);
-  window.gravador.setOverlayTool({ tool: penColor ? 'pen' : 'none', color: penColor });
+// Buttons come in pairs: the expanded card and the compact recording bar each
+// have their own DOM node for the same logical tool.
+const TOOL_BUTTONS = {
+  pen: [btnPen, document.getElementById('btnPenC')],
+  arrow: [btnArrow, document.getElementById('btnArrowC')],
+  rect: [document.getElementById('btnRectC')]
+};
+
+function syncToolButtons() {
+  for (const [tool, els] of Object.entries(TOOL_BUTTONS)) {
+    for (const el of els) {
+      if (el) el.classList.toggle('active', activeTool === tool);
+    }
+  }
+}
+
+function applyTool(tool, color) {
+  activeTool = tool;
+  toolColor = color || toolColor;
+  syncToolButtons();
+  window.gravador.setOverlayTool({ tool: activeTool, color: toolColor });
+}
+
+window.gravador.onForceToolNone(() => applyTool('none', toolColor));
+
+window.gravador.onToggleRecordShortcut(() => {
+  if (state === 'idle' && captureMode === 'fullscreen') btnRecord.click();
+  else if (state === 'recording' || state === 'paused') btnStop.click();
 });
 
-btnArrow.addEventListener('click', () => {
-  arrowOn = !arrowOn;
-  penColor = null;
-  btnPen.classList.remove('active');
-  btnArrow.classList.toggle('active', arrowOn);
-  window.gravador.setOverlayTool({ tool: arrowOn ? 'arrow' : 'none', color: '#000000' });
+// ---- Keyboard-shortcut settings panel ----
+// Keep in sync with src/lib/shortcutRecorder.js — inlined here because the renderer has no require() without a bundler.
+function keysToAccelerator({ ctrlKey, metaKey, shiftKey, altKey, key }) {
+  if (['Control', 'Shift', 'Alt', 'Meta'].includes(key)) return null;
+  const parts = [];
+  if (ctrlKey || metaKey) parts.push('CommandOrControl');
+  if (shiftKey) parts.push('Shift');
+  if (altKey) parts.push('Alt');
+  parts.push(key.length === 1 ? key.toUpperCase() : key);
+  return parts.join('+');
+}
+
+btnSettings.addEventListener('click', async () => {
+  if (state !== 'idle') return;
+  body.classList.add('settings-open');
+  const settings = await window.gravador.getSettings();
+  shortcutInput.value = settings.shortcuts?.toggleRecord || '';
 });
+
+btnCloseSettings.addEventListener('click', () => {
+  body.classList.remove('settings-open');
+});
+
+shortcutInput.addEventListener('keydown', (e) => {
+  e.preventDefault();
+  if (e.key === 'Escape') { shortcutInput.blur(); return; }
+  const accelerator = keysToAccelerator(e);
+  if (!accelerator) return; // only a modifier held so far, keep waiting
+  shortcutInput.value = accelerator;
+  window.gravador.updateSettings({ shortcuts: { toggleRecord: accelerator } });
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && body.classList.contains('settings-open') && document.activeElement !== shortcutInput) {
+    body.classList.remove('settings-open');
+  }
+});
+
+// Pen keeps its color-cycling behavior: click cycles black → blue → red → off.
+function onPenClick() {
+  const next = activeTool === 'pen' ? nextColor(toolColor) : '#000000';
+  if (!next) applyTool('none', toolColor);
+  else applyTool('pen', next);
+}
+
+function toggleTool(tool) {
+  if (activeTool === tool) applyTool('none', toolColor);
+  else applyTool(tool, toolColor);
+}
+
+TOOL_BUTTONS.pen.forEach((el) => el && el.addEventListener('click', onPenClick));
+TOOL_BUTTONS.arrow.forEach((el) => el && el.addEventListener('click', () => toggleTool('arrow')));
+TOOL_BUTTONS.rect.forEach((el) => el && el.addEventListener('click', () => toggleTool('rect')));
 
 // ---- Inline settings: camera/mic dropdowns + system audio toggle ----
 async function populateDevices() {
@@ -278,6 +380,27 @@ window.gravador.onSettingsChanged((settings) => {
   micSelect.value = settings.micId || '';
   sysAudioToggle.checked = !!settings.systemAudioEnabled;
 });
+
+// ---- Manual window drag (replaces -webkit-app-region, broken on transparent Windows windows) ----
+function isInteractive(el) {
+  return !!el.closest('button, select, input, label, a, .switch, .pill-controls, .compact-tools');
+}
+
+function initWindowDrag() {
+  for (const id of ['dragbar', 'compactDragZone']) {
+    const zone = document.getElementById(id);
+    if (!zone) continue;
+    zone.addEventListener('mousedown', (e) => {
+      if (e.button !== 0 || isInteractive(e.target)) return;
+      e.preventDefault();
+      window.gravador.startWindowDrag();
+    });
+  }
+  // Global: the cursor routinely leaves the small window mid-drag.
+  window.addEventListener('mouseup', () => window.gravador.endWindowDrag());
+  window.addEventListener('blur', () => window.gravador.endWindowDrag());
+}
+initWindowDrag();
 
 // ---- Init ----
 btnOpenFolder.disabled = !hasSavedThisSession;

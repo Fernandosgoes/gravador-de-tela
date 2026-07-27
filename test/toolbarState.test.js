@@ -39,3 +39,26 @@ test('invalid transition throws', () => {
   s.start();
   assert.throws(() => s.save(), /invalid transition/);
 });
+
+test('cancel from recording returns to idle', () => {
+  const s = createToolbarState();
+  s.start();
+  s.cancel();
+  assert.strictEqual(s.getState(), 'idle');
+});
+
+test('cancel from paused returns to idle', () => {
+  const s = createToolbarState();
+  s.start();
+  s.pause();
+  s.cancel();
+  assert.strictEqual(s.getState(), 'idle');
+});
+
+test('cancel is invalid from idle and preview', () => {
+  const s = createToolbarState();
+  assert.throws(() => s.cancel(), /invalid transition/);
+  s.start();
+  s.stop();
+  assert.throws(() => s.cancel(), /invalid transition/);
+});

@@ -1,5 +1,9 @@
 * { box-sizing: border-box; }
 
+/* An SVG with no width/height in a flex container renders at its huge intrinsic
+   size. Every icon here is nominally 24x24; scoped rules below override this. */
+svg { width: 16px; height: 16px; }
+
 html, body {
   margin: 0;
   background: transparent;
@@ -8,7 +12,13 @@ html, body {
   overflow: hidden;
 }
 
+/* Window dragging is done in JS (see toolbar.js initWindowDrag) — the native
+   -webkit-app-region: drag is broken on Windows with transparent:true windows
+   (Chromium renders a ghost outline and the window never follows the cursor). */
+.card-header:active, .compact-view:active { cursor: grabbing; }
+
 .card {
+  position: relative;
   background: #232326;
   border: 1px solid #2E2E32;
   border-radius: 14px;
@@ -17,6 +27,32 @@ html, body {
   height: 100%;
   overflow: hidden;
 }
+
+.settings-panel {
+  display: none;
+  position: absolute;
+  inset: 0;
+  background: #232326;
+  flex-direction: column;
+  padding: 14px;
+  gap: 12px;
+  z-index: 5;
+}
+body.settings-open .settings-panel { display: flex; }
+.settings-header { display: flex; align-items: center; justify-content: space-between; }
+.settings-header .title { font-size: 12.5px; font-weight: 600; color: #E4E4E7; }
+#shortcutInput {
+  border: 1px solid #2E2E32;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  color: #E4E4E7;
+  background: #1E1E21;
+  font-family: inherit;
+  cursor: pointer;
+  width: 100%;
+}
+body:not(.state-idle) #btnSettings { display: none; }
 
 /* body state controls which view is visible; window is resized to match by toolbar.js */
 .compact-view { display: none; }
@@ -34,7 +70,6 @@ body.state-paused .compact-view { display: flex; }
   display: flex;
   align-items: center;
   padding: 12px 14px 10px;
-  -webkit-app-region: drag;
 }
 
 .card-header .title {
@@ -47,7 +82,6 @@ body.state-paused .compact-view { display: flex; }
 .card-header .spacer { flex: 1; }
 
 .icon-btn {
-  -webkit-app-region: no-drag;
   width: 22px;
   height: 22px;
   border-radius: 6px;
@@ -79,7 +113,6 @@ body.state-paused .compact-view { display: flex; }
 }
 
 .mode-block {
-  -webkit-app-region: no-drag;
   border: 1px solid #2E2E32;
   border-radius: 10px;
   padding: 10px 8px;
@@ -112,7 +145,6 @@ body.state-paused .compact-view { display: flex; }
   letter-spacing: 0.05em;
 }
 .field select {
-  -webkit-app-region: no-drag;
   border: 1px solid #2E2E32;
   border-radius: 8px;
   padding: 8px 10px;
@@ -131,7 +163,6 @@ body.state-paused .compact-view { display: flex; }
 .toggle-row .label { font-size: 12px; color: #8A8A93; }
 
 .switch {
-  -webkit-app-region: no-drag;
   position: relative;
   display: inline-block;
   width: 32px;
@@ -158,7 +189,6 @@ body.state-paused .compact-view { display: flex; }
 .switch input:checked + .switch-track::after { left: 16px; background: #30D158; }
 
 .record-row {
-  -webkit-app-region: no-drag;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -209,8 +239,7 @@ body.state-preview .mode-row,
 body.state-preview .field { display: none; }
 
 .btn-save, .btn-discard {
-  -webkit-app-region: no-drag;
-  border: none;
+  border: 1px solid transparent;
   border-radius: 9px;
   padding: 10px 0;
   font-size: 12.5px;
@@ -222,34 +251,21 @@ body.state-preview .field { display: none; }
   cursor: pointer;
   font-family: inherit;
 }
+.btn-save svg, .btn-discard svg { width: 15px; height: 15px; flex-shrink: 0; }
 .btn-save { background: #30D158; color: #0E2A14; }
 .btn-discard {
-  border: 1px solid rgba(255, 59, 48, 0.45);
+  border-color: rgba(255, 59, 48, 0.45);
   color: #FF6A61;
   background: rgba(255, 59, 48, 0.06);
 }
 
-.tool-row {
-  display: flex;
-  justify-content: center;
-  gap: 6px;
-  border-top: 1px solid #2E2E32;
-  padding-top: 10px;
-}
-.tool-row .icon-btn {
-  width: 30px;
-  height: 30px;
-  border: 1px solid #2E2E32;
-  border-radius: 8px;
-}
 
 /* ---------- compact pill (recording/paused) ---------- */
 .compact-view {
   align-items: center;
   padding: 0 10px;
-  gap: 10px;
+  gap: 8px;
   height: 100%;
-  -webkit-app-region: drag;
 }
 
 .rec-dot {
@@ -275,17 +291,35 @@ body.state-paused .rec-dot { animation: none; opacity: 0.4; }
   font-weight: 600;
   color: #E4E4E7;
   font-variant-numeric: tabular-nums;
-  flex: 1;
+  flex: 0 0 auto;
+  margin-right: 2px;
+}
+
+.compact-tools {
+  display: flex;
+  gap: 3px;
+}
+
+.pill-divider {
+  width: 1px;
+  height: 18px;
+  background: #2E2E32;
+  flex-shrink: 0;
 }
 
 .pill-controls {
-  -webkit-app-region: no-drag;
   display: flex;
   gap: 4px;
 }
+.compact-tools .icon-btn,
 .pill-controls .icon-btn {
   width: 26px;
   height: 26px;
   border-radius: 7px;
   background: rgba(255, 255, 255, 0.04);
+}
+.icon-btn.danger { color: #FF6A61; }
+.icon-btn.danger:hover:not(:disabled) {
+  background: rgba(255, 59, 48, 0.14);
+  color: #FF3B30;
 }

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
+    #frame {
+      position: absolute;
+      display: none;
+      border: 2px solid #30D158;
+      box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.55);
+      box-sizing: border-box;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="frame"></div>
+  <script>
+    // The rect arrives in the same coordinate space the area picker produced
+    // (CSS pixels of the primary display), so it maps 1:1 onto this fullscreen window.
+    window.areaFrameBridge.onSetRect((rect) => {
+      if (!rect) return;
+      const el = document.getElementById('frame');
+      el.style.left = rect.x + 'px';
+      el.style.top = rect.y + 'px';
+      el.style.width = rect.width + 'px';
+      el.style.height = rect.height + 'px';
+      el.style.display = 'block';
+    });
+  </script>
+</body>
+</html>

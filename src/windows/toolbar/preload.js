@@ -11,5 +11,11 @@ contextBridge.exposeInMainWorld('gravador', {
   notifyState: (state) => ipcRenderer.send('recording:state-changed', state),
   runCountdown: () => ipcRenderer.invoke('countdown:run'),
   openLastFolder: () => ipcRenderer.invoke('export:open-last-folder'),
-  resizeWindow: (size) => ipcRenderer.send('toolbar:resize', size)
+  resizeWindow: (size) => ipcRenderer.send('toolbar:resize', size),
+  startWindowDrag: () => ipcRenderer.send('window:drag-start'),
+  endWindowDrag: () => ipcRenderer.send('window:drag-end'),
+  showAreaFrame: (rect) => ipcRenderer.send('areaframe:show', rect),
+  hideAreaFrame: () => ipcRenderer.send('areaframe:hide'),
+  onForceToolNone: (callback) => ipcRenderer.on('tool:force-none', () => callback()),
+  onToggleRecordShortcut: (callback) => ipcRenderer.on('shortcut:toggle-record', () => callback())
 });

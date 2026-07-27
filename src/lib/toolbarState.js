@@ -1,7 +1,7 @@
 const TRANSITIONS = {
   idle: { start: 'recording' },
-  recording: { pause: 'paused', stop: 'preview' },
-  paused: { resume: 'recording', stop: 'preview' },
+  recording: { pause: 'paused', stop: 'preview', cancel: 'idle' },
+  paused: { resume: 'recording', stop: 'preview', cancel: 'idle' },
   preview: { save: 'idle', delete: 'idle' }
 };
 
@@ -20,6 +20,7 @@ function createToolbarState() {
     pause: () => transition('pause'),
     resume: () => transition('resume'),
     stop: () => transition('stop'),
+    cancel: () => transition('cancel'),
     save: () => transition('save'),
     delete: () => transition('delete')
   };
