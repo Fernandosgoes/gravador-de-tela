@@ -19,7 +19,6 @@ function createToolbarWindow() {
       contextIsolation: true
     }
   });
-  win.setContentProtection(true);
   win.loadFile(require('path').join(__dirname, '../windows/toolbar/index.html'));
   win.on('close', (event) => {
     if (!app.isQuitting) {
@@ -210,7 +209,8 @@ let areaFrameWindow = null;
 
 // Draws a thin outline around the recorded region. It needs its own window
 // because the drawing overlay deliberately has NO content protection
-// (annotations must appear in the video), while this frame must NOT appear.
+// (annotations must appear in the video), while this frame is meant to be
+// visual-only guidance and not end up in the recording.
 function createAreaFrameWindow(rect) {
   const { screen } = require('electron');
   const primary = screen.getPrimaryDisplay();
@@ -232,7 +232,13 @@ function createAreaFrameWindow(rect) {
       contextIsolation: true
     }
   });
-  win.setContentProtection(true); // hides it from the capture
+  // No setContentProtection here: on some GPU/driver combos it makes the window
+  // vanish from the actual screen (not just from capture) whenever another app's
+  // screen-capture overlay activates (e.g. Lightshot, Windows' Snipping Tool) —
+  // so this frame will show up if you record with a different tool, but it
+  // never disappears from view. It's still excluded from this app's own
+  // recordings, since those are composited from the raw screen source, not a
+  // screenshot of this window.
   win.setIgnoreMouseEvents(true); // fully click-through, no forwarding needed
   win.webContents.once('did-finish-load', () => {
     win.webContents.send('areaframe:set-rect', rect);
