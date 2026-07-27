@@ -60,7 +60,13 @@ function recreateToolbarWindow() {
 let tray = null; // kept top-level: the GC destroys the tray icon if it's only function-local
 
 function createTray() {
-  tray = new Tray(require('path').join(__dirname, '../../build/icon.ico'));
+  // In dev, build/icon.ico sits in the project root. Packaged, it's not inside
+  // app.asar (build/ is not in "files") — electron-builder's extraResources
+  // copies it next to the asar instead, under process.resourcesPath.
+  const iconPath = app.isPackaged
+    ? require('path').join(process.resourcesPath, 'build/icon.ico')
+    : require('path').join(__dirname, '../../build/icon.ico');
+  tray = new Tray(iconPath);
   tray.setToolTip('Gravador de Tela');
   const showToolbar = () => {
     recreateToolbarWindow();
