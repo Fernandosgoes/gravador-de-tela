@@ -2,6 +2,7 @@
   "name": "gravador-de-tela",
   "version": "1.0.0",
   "description": "Gravador de tela simples para tutoriais rapidos",
+  "author": "Fernando Sabino Goes",
   "main": "src/main/index.js",
   "scripts": {
     "start": "electron .",
