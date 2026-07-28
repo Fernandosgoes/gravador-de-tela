@@ -9,7 +9,7 @@ contextBridge.exposeInMainWorld('gravador', {
   getSettings: () => ipcRenderer.invoke('settings:get'),
   updateSettings: (settings) => ipcRenderer.send('settings:update', settings),
   onSettingsChanged: (callback) => ipcRenderer.on('settings:changed', (event, settings) => callback(settings)),
-  saveRecording: (arrayBuffer) => ipcRenderer.invoke('export:save', arrayBuffer),
+  saveRecording: (arrayBuffer, format) => ipcRenderer.invoke('export:save', arrayBuffer, format),
   notifyState: (state) => ipcRenderer.send('recording:state-changed', state),
   runCountdown: () => ipcRenderer.invoke('countdown:run'),
   openLastFolder: () => ipcRenderer.invoke('export:open-last-folder'),
@@ -21,5 +21,6 @@ contextBridge.exposeInMainWorld('gravador', {
   showAreaFrame: (rect) => ipcRenderer.send('areaframe:show', rect),
   hideAreaFrame: () => ipcRenderer.send('areaframe:hide'),
   onForceToolNone: (callback) => ipcRenderer.on('tool:force-none', () => callback()),
+  setIgnoreMouse: (ignore) => ipcRenderer.send('toolbar:set-ignore-mouse', ignore),
   onShortcutAction: (callback) => ipcRenderer.on('shortcut:action', (_e, action) => callback(action))
 });

@@ -22,14 +22,14 @@ O instalador já vem pronto neste repositório, em [`release/Gravador-de-Tela-Se
 **Opção 1 — baixar só o `.exe` (mais simples)**
 1. Abra [`release/Gravador-de-Tela-Setup.exe`](release/Gravador-de-Tela-Setup.exe) aqui no GitHub.
 2. Clique em **Download**.
-3. Dê dois cliques no instalador baixado e siga os passos (escolher pasta, criar atalho). Pronto.
+3. Dê dois cliques no instalador baixado. Pronto — ele instala sozinho, sem telas nem perguntas.
 
 **Opção 2 — clonar o repositório**
 1. Botão verde **Code** → **Download ZIP** (ou `git clone`).
 2. Extraia e entre na pasta `release/`.
-3. Dê dois cliques em `Gravador-de-Tela-Setup.exe` e siga o instalador. Pronto.
+3. Dê dois cliques em `Gravador-de-Tela-Setup.exe`. Pronto.
 
-É um instalador tradicional (NSIS): copia os arquivos pra pasta escolhida, cria atalho na área de trabalho, e nas próximas aberturas o app inicia direto — sem re-extrair nada, muito mais rápido que rodar um `.exe` portátil toda vez.
+É um instalador de um clique só (NSIS): instala direto na pasta padrão do usuário, cria atalho na área de trabalho, sem diálogos pra responder. Nas próximas aberturas o app inicia direto — sem re-extrair nada, muito mais rápido que rodar um `.exe` portátil toda vez.
 
 > **Aviso do Windows:** o instalador não tem assinatura digital paga (custa dinheiro e não faz sentido pra um projeto pessoal), então o SmartScreen pode mostrar "O Windows protegeu o computador". Clique em **Mais informações** → **Executar assim mesmo**. É o aviso padrão pra qualquer `.exe` não assinado — o código é 100% aberto aqui no repositório, pode conferir.
 

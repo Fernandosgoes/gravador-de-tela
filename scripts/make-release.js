@@ -10,7 +10,7 @@ const releaseDir = path.join(root, 'release');
 const releaseExe = path.join(releaseDir, 'Gravador-de-Tela-Setup.exe');
 
 const builderCli = path.join(root, 'node_modules', 'electron-builder', 'out', 'cli', 'cli.js');
-execFileSync(process.execPath, [builderCli, '--win'], {
+execFileSync(process.execPath, [builderCli, '--win', '--publish', 'never'], {
   cwd: root,
   stdio: 'inherit',
   env: { ...process.env, CSC_IDENTITY_AUTO_DISCOVERY: 'false' }

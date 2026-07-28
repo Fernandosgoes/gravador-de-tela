@@ -314,6 +314,7 @@ let appSettings = {
   micEnabled: true,
   micId: null,
   systemAudioEnabled: true,
+  outputFormat: 'mp4',
   shortcuts: { ...DEFAULT_SHORTCUTS },
   ...loadSettings()
 };
@@ -435,6 +436,11 @@ app.whenReady().then(() => {
   ipcMain.on('overlay:set-ignore-mouse', (event, ignore) => {
     if (overlayWindow) overlayWindow.setIgnoreMouseEvents(ignore, { forward: true });
   });
+  ipcMain.on('toolbar:set-ignore-mouse', (event, ignore) => {
+    if (toolbarWindow && !toolbarWindow.isDestroyed()) {
+      toolbarWindow.setIgnoreMouseEvents(ignore, { forward: true });
+    }
+  });
   ipcMain.handle('settings:get', () => appSettings);
   ipcMain.on('settings:update', (event, newSettings) => {
     appSettings = {
@@ -487,9 +493,9 @@ app.whenReady().then(() => {
   });
   ipcMain.on('areaframe:hide', () => destroyAreaFrameWindow());
   let lastSavedPath = null;
-  ipcMain.handle('export:save', async (event, arrayBuffer) => {
+  ipcMain.handle('export:save', async (event, arrayBuffer, format) => {
     const win = BrowserWindow.fromWebContents(event.sender);
-    const result = await saveRecording(Buffer.from(arrayBuffer), win);
+    const result = await saveRecording(Buffer.from(arrayBuffer), win, format);
     if (result.success) {
       lastSavedPath = result.path;
     }

@@ -32,6 +32,7 @@
 
         <div class="settings-tabs">
           <button class="settings-tab active" data-tab="shortcuts">Atalhos</button>
+          <button class="settings-tab" data-tab="interface">Interface</button>
           <button class="settings-tab" data-tab="about">Sobre</button>
         </div>
 
@@ -88,6 +89,22 @@
               <button class="icon-btn shortcutClear" title="Remover atalho">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
               </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-body settings-tab-panel" data-tab-panel="interface">
+          <div class="field">
+            <label>Formato de exportação</label>
+            <div class="format-options">
+              <label class="format-option">
+                <input type="radio" name="outputFormat" value="mp4" checked>
+                MP4 (recomendado)
+              </label>
+              <label class="format-option">
+                <input type="radio" name="outputFormat" value="webm">
+                WebM
+              </label>
             </div>
           </div>
         </div>

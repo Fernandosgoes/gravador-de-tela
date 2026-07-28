@@ -95,8 +95,10 @@ const btnCloseSettings = document.getElementById('btnCloseSettings');
 const shortcutFields = document.querySelectorAll('.shortcut-field');
 const settingsTabs = document.querySelectorAll('.settings-tab');
 const settingsTabPanels = document.querySelectorAll('.settings-tab-panel');
+const outputFormatInputs = document.querySelectorAll('input[name="outputFormat"]');
 
 let captureMode = 'fullscreen'; // 'fullscreen' | 'area'
+let outputFormat = 'mp4'; // 'mp4' | 'webm'
 let lastRecordingBlob = null;
 let recordingStartedAt = null;
 let timerInterval = null;
@@ -264,7 +266,7 @@ btnSave.addEventListener('click', async () => {
   savingRecording = true;
   try {
     const arrayBuffer = await lastRecordingBlob.arrayBuffer();
-    const result = await window.gravador.saveRecording(arrayBuffer);
+    const result = await window.gravador.saveRecording(arrayBuffer, outputFormat);
     if (result.success) {
       if (result.format === 'webm') {
         alert('Não foi possível converter para MP4, salvo como WebM: ' + result.path + '\n\nMotivo: ' + result.warning);
@@ -339,6 +341,7 @@ function applyTool(tool, color) {
   syncToolButtons();
   syncColorSwatches();
   window.gravador.setOverlayTool({ tool: activeTool, color: toolColor });
+  if (activeTool === 'none') window.gravador.setIgnoreMouse(false);
 }
 
 colorSwatches.forEach((el) => el.addEventListener('click', () => {
@@ -415,6 +418,7 @@ btnSettings.addEventListener('click', async () => {
     const input = field.querySelector('.shortcutInput');
     input.value = settings.shortcuts?.[field.dataset.action] || '';
   });
+  outputFormatInputs.forEach((input) => { input.checked = input.value === outputFormat; });
 });
 
 btnCloseSettings.addEventListener('click', () => {
@@ -482,22 +486,42 @@ async function initSettings() {
   cameraSelect.value = settings.cameraId || '';
   micSelect.value = settings.micId || '';
   sysAudioToggle.checked = !!settings.systemAudioEnabled;
+  outputFormat = settings.outputFormat || 'mp4';
 }
 
 cameraSelect.addEventListener('change', pushSettingsUpdate);
 micSelect.addEventListener('change', pushSettingsUpdate);
 sysAudioToggle.addEventListener('change', pushSettingsUpdate);
+outputFormatInputs.forEach((input) => input.addEventListener('change', () => {
+  if (!input.checked) return;
+  outputFormat = input.value;
+  window.gravador.updateSettings({ outputFormat });
+}));
 
 window.gravador.onSettingsChanged((settings) => {
   cameraSelect.value = settings.cameraId || '';
   micSelect.value = settings.micId || '';
   sysAudioToggle.checked = !!settings.systemAudioEnabled;
+  outputFormat = settings.outputFormat || 'mp4';
 });
 
 // ---- Manual window drag (replaces -webkit-app-region, broken on transparent Windows windows) ----
 function isInteractive(el) {
   return !!el.closest('button, select, input, label, a, .switch, .pill-controls, .compact-tools, .color-swatches');
 }
+
+// While a drawing tool is armed, most of the toolbar's footprint is just
+// blank padding around the compact pill — but it's still a real, opaque
+// window, so any mousedown starting there gets captured by it instead of the
+// canvas underneath (Windows binds a mouse gesture to whichever window was
+// under the cursor when it began — no way to hand it off mid-drag). Making
+// the toolbar click-through everywhere except its actual controls, the same
+// trick the overlay already uses for the webcam bubble, lets strokes started
+// over the bar's dead space reach the overlay instead of being swallowed.
+document.addEventListener('mousemove', (e) => {
+  if (activeTool === 'none') return;
+  window.gravador.setIgnoreMouse(!isInteractive(e.target));
+});
 
 function initWindowDrag() {
   for (const id of ['dragbar', 'compactDragZone']) {

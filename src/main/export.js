@@ -3,8 +3,16 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const ffmpegPath = require('ffmpeg-static');
 const { buildTranscodeArgs } = require('../lib/ffmpegArgs');
+
+// electron-builder unpacks ffmpeg-static out of app.asar (see asarUnpack in
+// package.json), but ffmpeg-static's own path resolution has no asar
+// awareness and still points inside app.asar, so spawn() gets a virtual path
+// that doesn't exist on disk (ENOENT) unless we correct it here.
+let ffmpegPath = require('ffmpeg-static');
+if (ffmpegPath.includes('app.asar')) {
+  ffmpegPath = ffmpegPath.replace('app.asar', 'app.asar.unpacked');
+}
 
 async function transcodeToMp4(webmPath, mp4Path) {
   return new Promise((resolve, reject) => {
@@ -20,7 +28,7 @@ async function transcodeToMp4(webmPath, mp4Path) {
   });
 }
 
-async function saveRecording(buffer, browserWindow) {
+async function saveRecording(buffer, browserWindow, format = 'mp4') {
   if (!buffer || buffer.length === 0) {
     return { success: false, error: 'Gravação vazia — nada para salvar.' };
   }
@@ -28,15 +36,23 @@ async function saveRecording(buffer, browserWindow) {
   const tempWebm = path.join(os.tmpdir(), `gravacao-${Date.now()}.webm`);
   fs.writeFileSync(tempWebm, buffer);
 
+  const wantsWebm = format === 'webm';
   const { canceled, filePath } = await dialog.showSaveDialog(browserWindow, {
     title: 'Salvar gravação',
-    defaultPath: `tutorial-${Date.now()}.mp4`,
-    filters: [{ name: 'Vídeo MP4', extensions: ['mp4'] }]
+    defaultPath: `tutorial-${Date.now()}.${wantsWebm ? 'webm' : 'mp4'}`,
+    filters: wantsWebm
+      ? [{ name: 'Vídeo WebM', extensions: ['webm'] }]
+      : [{ name: 'Vídeo MP4', extensions: ['mp4'] }]
   });
 
   if (canceled || !filePath) {
     fs.unlinkSync(tempWebm);
     return { success: false };
+  }
+
+  if (wantsWebm) {
+    fs.renameSync(tempWebm, filePath);
+    return { success: true, path: filePath, format: 'webm' };
   }
 
   try {

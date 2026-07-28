@@ -27,8 +27,8 @@
     },
     "nsis": {
       "artifactName": "Gravador-de-Tela-Setup.exe",
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
+      "oneClick": true,
+      "perMachine": false,
       "createDesktopShortcut": true
     },
     "files": [
