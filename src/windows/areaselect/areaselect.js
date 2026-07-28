@@ -20,11 +20,6 @@ function applyRectStyle() {
   rectEl.style.width = rect.width + 'px';
   rectEl.style.height = rect.height + 'px';
   dimLabel.textContent = `${Math.round(rect.width)} × ${Math.round(rect.height)}`;
-
-  // Flip the action buttons above the rect when there isn't ~60px of room below —
-  // otherwise they can end up covered by the Windows taskbar or off-screen.
-  const spaceBelow = window.innerHeight - (rect.y + rect.height);
-  actions.classList.toggle('flip-up', spaceBelow < 60);
 }
 
 function enterAdjustMode() {

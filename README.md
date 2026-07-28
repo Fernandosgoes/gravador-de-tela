@@ -5,30 +5,30 @@ App de gravação de tela leve e rápido para Windows, feito para tutoriais e de
 Sem conta, sem nuvem, sem telemetria — grava local e salva onde você mandar.
 
 ## Índice
-- [Usar sem instalar nada](#-usar-sem-instalar-nada-sem-terminal)
+- [Instalar](#-instalar)
 - [Funcionalidades](#-funcionalidades)
 - [Controles](#-controles)
 - [Desenvolvimento](#-desenvolvimento)
 - [Arquitetura](#-arquitetura)
 - [Stack técnico](#-stack-técnico)
 
-## 📦 Usar sem instalar nada (sem terminal)
+## 📦 Instalar
 
-O executável já vem pronto neste repositório, em [`release/Gravador-de-Tela.exe`](release/Gravador-de-Tela.exe) — não precisa instalar Node, npm, nem rodar nenhum comando.
+O instalador já vem pronto neste repositório, em [`release/Gravador-de-Tela-Setup.exe`](release/Gravador-de-Tela-Setup.exe) — não precisa instalar Node, npm, nem rodar nenhum comando.
 
 **Opção 1 — baixar só o `.exe` (mais simples)**
-1. Abra [`release/Gravador-de-Tela.exe`](release/Gravador-de-Tela.exe) aqui no GitHub.
+1. Abra [`release/Gravador-de-Tela-Setup.exe`](release/Gravador-de-Tela-Setup.exe) aqui no GitHub.
 2. Clique em **Download**.
-3. Dê dois cliques no arquivo baixado. Pronto.
+3. Dê dois cliques no instalador baixado e siga os passos (escolher pasta, criar atalho). Pronto.
 
 **Opção 2 — clonar o repositório**
 1. Botão verde **Code** → **Download ZIP** (ou `git clone`).
 2. Extraia e entre na pasta `release/`.
-3. Dê dois cliques em `Gravador-de-Tela.exe`. Pronto.
+3. Dê dois cliques em `Gravador-de-Tela-Setup.exe` e siga o instalador. Pronto.
 
-É um executável portátil: roda direto, não instala nada no sistema, não precisa de admin.
+É um instalador tradicional (NSIS): copia os arquivos pra pasta escolhida, cria atalho na área de trabalho, e nas próximas aberturas o app inicia direto — sem re-extrair nada, muito mais rápido que rodar um `.exe` portátil toda vez.
 
-> **Aviso do Windows:** o `.exe` não tem assinatura digital paga (custa dinheiro e não faz sentido pra um projeto pessoal), então o SmartScreen pode mostrar "O Windows protegeu o computador". Clique em **Mais informações** → **Executar assim mesmo**. É o aviso padrão pra qualquer `.exe` não assinado — o código é 100% aberto aqui no repositório, pode conferir.
+> **Aviso do Windows:** o instalador não tem assinatura digital paga (custa dinheiro e não faz sentido pra um projeto pessoal), então o SmartScreen pode mostrar "O Windows protegeu o computador". Clique em **Mais informações** → **Executar assim mesmo**. É o aviso padrão pra qualquer `.exe` não assinado — o código é 100% aberto aqui no repositório, pode conferir.
 
 > **Clonando com `git clone`?** O `.exe` é versionado via [Git LFS](https://git-lfs.com) (arquivos binários grandes não devem virar blob comum no Git). Sem o Git LFS instalado localmente, o arquivo baixado será um ponteiro de texto de ~1 KB em vez do executável de verdade. Nesse caso, use a Opção 1 (download direto pela interface do GitHub), que sempre entrega o arquivo real — o smudge do LFS já roda do lado do servidor.
 
@@ -37,7 +37,7 @@ O executável já vem pronto neste repositório, em [`release/Gravador-de-Tela.e
 - **Dois modos de captura**: tela inteira ou área customizada com handles de redimensionar (8 pontos + mover o retângulo inteiro), label de dimensões em tempo real (`1280 × 720`) e correção automática para displays com escala do Windows diferente de 100%.
 - **Contagem regressiva 3-2-1** antes de começar a gravar, pra você se posicionar.
 - **Barra flutuante arrastável**: card compacto com dropdowns de câmera/microfone/áudio do sistema, botão de gravar circular, e — durante a gravação — encolhe numa pílula só com cronômetro e Pausar/Parar/Cancelar. Não aparece no vídeo gravado (content protection nativo do Windows).
-- **Anotações ao vivo**: caneta (preto → azul → vermelho → desligado), seta apontadora, e retângulo — todas com fade automático de 3 segundos.
+- **Anotações ao vivo**: caneta, seta apontadora, e retângulo, com paleta de 5 cores (preto, branco, vermelho, amarelo, azul) — todas com fade automático de 3 segundos.
 - **Moldura de área**: em gravação de área customizada, uma borda fina marca visualmente a região capturada durante toda a gravação (só pra você, não aparece no vídeo final).
 - **Webcam sobreposta**: bolha de câmera arrastável por cima da gravação.
 - **Ícone na bandeja do sistema**: fechar a barra só a esconde — o app continua rodando em segundo plano, pronto pro atalho de gravar. Menu da bandeja com "Abrir" e "Sair" de verdade.
@@ -51,9 +51,7 @@ O executável já vem pronto neste repositório, em [`release/Gravador-de-Tela.e
 - **Tela Inteira / Área Customizada**: escolhe o modo de captura antes de gravar. Área Customizada abre um seletor com handles de redimensionar; Esc ou o botão Cancelar a qualquer momento cancela a seleção.
 - **Gravar / Pausar / Parar**: controla a gravação. Durante a gravação, a barra flutuante mostra o cronômetro e pode ser arrastada para qualquer lugar da tela.
 - **Cancelar** (durante a gravação): descarta a gravação na hora, sem confirmação.
-- **Caneta**: clique para alternar preto → azul → vermelho → desligado. Desenha por cima da tela, some sozinho após 3s.
-- **Seta**: liga/desliga modo de apontar com seta (mesmo fade de 3s).
-- **Retângulo**: liga/desliga o desenho de retângulos vazados (mesmo fade de 3s).
+- **Caneta / Seta / Retângulo**: liga/desliga a ferramenta; a cor é escolhida numa paleta de 5 swatches (preto, branco, vermelho, amarelo, azul) que aparece na barra durante a gravação. Desenha por cima da tela, some sozinho após 3s.
 - **Câmera / Microfone / Áudio do sistema**: escolhidos direto no card, antes de gravar.
 - **Salvar / Descartar**: após parar, decide se exporta em MP4 ou descarta a gravação.
 - **Ícone da bandeja**: clique para reabrir a barra; menu com "Abrir" e "Sair".
@@ -80,7 +78,7 @@ npm test
 npm run release
 ```
 
-Reconstrói o executável (via `electron-builder`) e já atualiza `release/Gravador-de-Tela.exe`. Depois:
+Reconstrói o instalador (via `electron-builder`) e já atualiza `release/Gravador-de-Tela-Setup.exe`. Depois:
 
 ```bash
 git add release && git commit -m "chore: update exe" && git push

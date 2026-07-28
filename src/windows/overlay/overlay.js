@@ -1,14 +1,38 @@
 const canvas = document.getElementById('board');
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
 const ctx = canvas.getContext('2d');
 
-const FADE_MS = 3000;
+// Sizing the canvas' drawing-buffer attributes from window.innerWidth/Height
+// at script-load time could race the window's own layout — if it ran before
+// the fullscreen bounds settled, the canvas element stayed smaller than the
+// real window forever after. Clicks landing in that leftover strip fell
+// through to <body> instead of the canvas (confirmed: mousedown fired on
+// document but never on the canvas there), silently refusing to draw in
+// exactly that band. Resizing on both load and window 'resize' keeps the
+// buffer's pixel dimensions matched to the actual viewport at all times.
+function syncCanvasSize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+syncCanvasSize();
+window.addEventListener('resize', syncCanvasSize);
+
+const FADE_MS = 6000;
 let currentTool = 'none';
 let currentColor = '#000000';
 let strokes = []; // { type: 'pen'|'arrow'|'rect', points: [{x,y}], color, addedAt }
 let drawing = false;
 let activeStroke = null;
+let rendering = false;
+
+// The render loop only runs while there's something to draw (active tool, a
+// stroke in progress, or strokes still fading out) — otherwise this fullscreen
+// transparent window would keep compositing at 60fps for the entire lifetime
+// of the app, most of which has nothing on screen to show.
+function ensureRendering() {
+  if (rendering) return;
+  rendering = true;
+  render();
+}
 
 window.overlayBridge.onToolChanged(({ tool, color }) => {
   currentTool = tool;
@@ -23,6 +47,7 @@ canvas.addEventListener('mousedown', (e) => {
   if (currentTool === 'none') return;
   drawing = true;
   activeStroke = { type: currentTool, points: [pointFromEvent(e)], color: currentColor, addedAt: Date.now() };
+  ensureRendering();
 });
 
 canvas.addEventListener('mousemove', (e) => {
@@ -90,9 +115,20 @@ function render() {
       ctx.lineJoin = 'round';
     }
   }
+
+  // Nothing left to animate (no strokes still fading, nothing being drawn
+  // right now) — stop rescheduling. Having a tool armed is not by itself a
+  // reason to keep animating: a tool sitting idle with nothing on screen was
+  // still repainting at 60fps forever, which fought the toolbar's drag
+  // polling (main-process setInterval) for the compositor and made dragging
+  // the toolbar stutter badly whenever a tool was active. mousedown/mousemove
+  // below call ensureRendering() again the moment drawing actually starts.
+  if (strokes.length === 0 && !activeStroke) {
+    rendering = false;
+    return;
+  }
   requestAnimationFrame(render);
 }
-render();
 
 const bubbleEl = document.getElementById('webcamBubble');
 document.addEventListener('mousemove', (e) => {

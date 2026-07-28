@@ -6,7 +6,7 @@
   "scripts": {
     "start": "electron .",
     "test": "node --test \"test/**/*.test.js\"",
-    "build": "electron-builder --win portable",
+    "build": "electron-builder --win",
     "release": "node scripts/make-release.js"
   },
   "devDependencies": {
@@ -14,19 +14,21 @@
     "electron-builder": "^25.0.0"
   },
   "dependencies": {
-    "lucide-static": "^0.469.0",
-    "ffmpeg-static": "^5.2.0"
+    "ffmpeg-static": "^5.2.0",
+    "lucide-static": "^0.469.0"
   },
   "build": {
     "appId": "com.gravadordetela.app",
     "productName": "Gravador de Tela",
     "win": {
-      "target": "portable",
-      "signAndEditExecutable": false,
+      "target": "nsis",
       "icon": "build/icon.ico"
     },
-    "portable": {
-      "artifactName": "Gravador-de-Tela.exe"
+    "nsis": {
+      "artifactName": "Gravador-de-Tela-Setup.exe",
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
     },
     "files": [
       "src/**/*",

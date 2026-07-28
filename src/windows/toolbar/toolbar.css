@@ -10,6 +10,11 @@ html, body {
   font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: #E4E4E7;
   overflow: hidden;
+  /* Without this, dragging the pen tool across the toolbar (the overlay is
+     click-through everywhere except where a stroke is being drawn) can
+     trigger a native text-selection drag in this window underneath, which
+     eats the mouse gesture and stops the stroke from continuing. */
+  user-select: none;
 }
 
 /* Window dragging is done in JS (see toolbar.js initWindowDrag) — the native
@@ -19,7 +24,7 @@ html, body {
 
 .card {
   position: relative;
-  background: #232326;
+  background: #16161A;
   border: 1px solid #2E2E32;
   border-radius: 14px;
   box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.35);
@@ -32,16 +37,50 @@ html, body {
   display: none;
   position: absolute;
   inset: 0;
-  background: #232326;
+  background: #16161A;
   flex-direction: column;
   padding: 14px;
   gap: 12px;
   z-index: 5;
 }
 body.settings-open .settings-panel { display: flex; }
-.settings-header { display: flex; align-items: center; justify-content: space-between; }
+.settings-header { display: flex; align-items: center; gap: 8px; }
 .settings-header .title { font-size: 12.5px; font-weight: 600; color: #E4E4E7; }
-#shortcutInput {
+
+.settings-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid #2E2E32;
+  padding-bottom: 8px;
+}
+.settings-tab {
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  color: #8A8A93;
+  background: transparent;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.settings-tab:hover { color: #E4E4E7; }
+.settings-tab.active { color: #FF6A61; background: rgba(255, 59, 48, 0.12); }
+
+.settings-tab-panel { display: none; }
+.settings-tab-panel.active {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+}
+
+.about-panel { text-align: left; }
+.about-app { font-size: 13.5px; font-weight: 700; color: #E4E4E7; }
+.about-author { font-size: 12px; color: #8A8A93; }
+.about-message { font-size: 12px; line-height: 1.5; color: #C8C8CE; margin: 4px 0 0; }
+.shortcut-row { display: flex; gap: 6px; }
+.shortcutInput {
   border: 1px solid #2E2E32;
   border-radius: 8px;
   padding: 8px 10px;
@@ -51,6 +90,12 @@ body.settings-open .settings-panel { display: flex; }
   font-family: inherit;
   cursor: pointer;
   width: 100%;
+  min-width: 0;
+}
+.shortcutClear {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
 }
 body:not(.state-idle) #btnSettings { display: none; }
 
@@ -262,11 +307,19 @@ body.state-preview .field { display: none; }
 
 /* ---------- compact pill (recording/paused) ---------- */
 .compact-view {
-  align-items: center;
-  padding: 0 10px;
+  flex-direction: column;
+  justify-content: center;
+  padding: 8px 10px;
   gap: 8px;
   height: 100%;
 }
+
+.compact-row1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.compact-row1 .spacer { flex: 1; }
 
 .rec-dot {
   width: 9px;
@@ -303,7 +356,7 @@ body.state-paused .rec-dot { animation: none; opacity: 0.4; }
 .pill-divider {
   width: 1px;
   height: 18px;
-  background: #2E2E32;
+  background: rgba(255, 255, 255, 0.14);
   flex-shrink: 0;
 }
 
@@ -316,10 +369,54 @@ body.state-paused .rec-dot { animation: none; opacity: 0.4; }
   width: 26px;
   height: 26px;
   border-radius: 7px;
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.14);
+  color: #F0F0F2;
+}
+.compact-tools .icon-btn:hover:not(:disabled),
+.pill-controls .icon-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.24);
+  color: #FFFFFF;
 }
 .icon-btn.danger { color: #FF6A61; }
 .icon-btn.danger:hover:not(:disabled) {
   background: rgba(255, 59, 48, 0.14);
   color: #FF3B30;
+}
+
+.compact-row2 .spacer { flex: 1; }
+.compact-row2 {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+body.tool-active .compact-row2 { display: flex; }
+
+.swatch-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #6A6A73;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+}
+
+.color-swatches {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.color-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.28);
+  padding: 0;
+  cursor: pointer;
+}
+.color-swatch.active {
+  border-color: #F4F4F5;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.18);
 }

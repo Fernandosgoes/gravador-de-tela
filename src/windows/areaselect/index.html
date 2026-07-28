@@ -80,29 +80,46 @@
     #actions {
       position: absolute;
       display: none;
-      bottom: -44px;
+      top: 50%;
       left: 50%;
-      transform: translateX(-50%);
-      gap: 8px;
+      transform: translate(-50%, -50%);
+      gap: 10px;
       white-space: nowrap;
     }
     #actions.visible { display: flex; }
-    #actions.flip-up { bottom: auto; top: -44px; }
     #startBtn, #cancelBtn {
       font-size: 12.5px;
       font-weight: 600;
-      padding: 8px 16px;
-      border-radius: 8px;
+      width: 92px;
+      height: 92px;
+      border-radius: 16px;
       cursor: pointer;
       font-family: inherit;
-      border: 1px solid transparent;
+      border: 1px solid #2E2E32;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      text-align: center;
+      box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.6);
+      transition: transform 0.1s, border-color 0.15s;
     }
-    #startBtn { background: #30D158; color: #0E2A14; }
+    #startBtn:hover, #cancelBtn:hover { transform: translateY(-1px); }
+    #startBtn svg, #cancelBtn svg { width: 26px; height: 26px; }
+
+    #startBtn {
+      background: #232326;
+      color: #F4F4F5;
+    }
+    #startBtn:hover { border-color: rgba(255, 59, 48, 0.5); }
+    #startBtn .rec-icon { color: #FF3B30; }
+
     #cancelBtn {
-      background: rgba(0, 0, 0, 0.55);
-      color: #E4E4E7;
-      border-color: #2E2E32;
+      background: #1A1A1D;
+      color: #8A8A93;
     }
+    #cancelBtn:hover { border-color: #3A3A40; color: #C8C8CE; }
   </style>
 </head>
 <body>
@@ -119,8 +136,14 @@
     <div class="handle" data-pos="sw"></div>
     <div class="handle" data-pos="w"></div>
     <div id="actions">
-      <button id="startBtn">Iniciar gravação</button>
-      <button id="cancelBtn">Cancelar</button>
+      <button id="startBtn">
+        <svg class="rec-icon" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="9"/></svg>
+        Iniciar
+      </button>
+      <button id="cancelBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        Cancelar
+      </button>
     </div>
   </div>
   <script src="areaselect.js"></script>

@@ -15,7 +15,62 @@ function transition(action) {
 }
 
 const EXPANDED_SIZE = { width: 296, height: 420 };
-const COMPACT_SIZE = { width: 300, height: 48 };
+const COMPACT_SIZE = { width: 320, height: 48 };
+const COMPACT_SIZE_WITH_COLORS = { width: 320, height: 92 };
+// activeTool is declared further down (with the rest of the tool state) but
+// this is only ever called from render()/syncToolButtons(), both invoked
+// well after the whole script has run once — never during initial load.
+function compactSize() {
+  return activeTool !== 'none' ? COMPACT_SIZE_WITH_COLORS : COMPACT_SIZE;
+}
+
+const POSITION_MARGIN = 48;
+
+// Places the bar right before a recording starts. The bar is a real, opaque
+// window — wherever it sits, clicks land on it instead of the drawing
+// overlay underneath. So the goal is to keep it off the recorded area
+// entirely whenever the screen has room, only falling back to sitting inside
+// the area (least-bad option) when there's nowhere else to put it.
+// Uses the compact size since that's the version visible for the recording.
+async function positionForRecording(areaRect) {
+  const screenBounds = await window.gravador.getPrimaryDisplayBounds();
+  const { width: barWidth, height: barHeight } = compactSize();
+
+  if (!areaRect) {
+    // Fullscreen: everywhere is "the recorded area", so there's no true safe
+    // spot — top-right corner is simply less likely to sit over content than
+    // top-center.
+    window.gravador.positionWindow({
+      x: screenBounds.x + screenBounds.width - barWidth - POSITION_MARGIN,
+      y: screenBounds.y + POSITION_MARGIN
+    });
+    return;
+  }
+
+  const clamp = (v, min, max) => Math.max(min, Math.min(v, max));
+  const x = clamp(
+    areaRect.x + (areaRect.width - barWidth) / 2,
+    screenBounds.x,
+    screenBounds.x + screenBounds.width - barWidth
+  );
+
+  const spaceAbove = areaRect.y - screenBounds.y;
+  const spaceBelow = (screenBounds.y + screenBounds.height) - (areaRect.y + areaRect.height);
+  const needed = barHeight + 2 * POSITION_MARGIN;
+
+  let y;
+  if (spaceAbove >= needed) {
+    y = areaRect.y - barHeight - POSITION_MARGIN; // outside, above the area
+  } else if (spaceBelow >= needed) {
+    y = areaRect.y + areaRect.height + POSITION_MARGIN; // outside, below the area
+  } else if (areaRect.height >= needed) {
+    y = areaRect.y + POSITION_MARGIN; // no room outside — inside, near the top
+  } else {
+    y = areaRect.y + areaRect.height - barHeight - POSITION_MARGIN; // inside, near the bottom
+  }
+
+  window.gravador.positionWindow({ x, y });
+}
 
 const body = document.body;
 const modeFullscreen = document.getElementById('modeFullscreen');
@@ -30,13 +85,16 @@ const btnClose = document.getElementById('btnClose');
 const btnPen = document.getElementById('btnPen');
 const btnArrow = document.getElementById('btnArrow');
 const btnCancel = document.getElementById('btnCancel');
+const btnToolOff = document.getElementById('btnToolOff');
 const cameraSelect = document.getElementById('cameraSelect');
 const micSelect = document.getElementById('micSelect');
 const sysAudioToggle = document.getElementById('sysAudioToggle');
 const pillTimer = document.getElementById('pillTimer');
 const btnSettings = document.getElementById('btnSettings');
 const btnCloseSettings = document.getElementById('btnCloseSettings');
-const shortcutInput = document.getElementById('shortcutInput');
+const shortcutFields = document.querySelectorAll('.shortcut-field');
+const settingsTabs = document.querySelectorAll('.settings-tab');
+const settingsTabPanels = document.querySelectorAll('.settings-tab-panel');
 
 let captureMode = 'fullscreen'; // 'fullscreen' | 'area'
 let lastRecordingBlob = null;
@@ -70,7 +128,7 @@ function render() {
     ? '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M8 5v14l11-7Z"/></svg>'
     : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>';
 
-  window.gravador.resizeWindow(isIdleOrPreview ? EXPANDED_SIZE : COMPACT_SIZE);
+  window.gravador.resizeWindow(isIdleOrPreview ? EXPANDED_SIZE : compactSize());
   window.gravador.notifyState(state);
 }
 
@@ -131,12 +189,24 @@ async function beginRecording(cropRect, logicalRect) {
       return;
     }
 
+    // Root cause of an earlier "hangs forever" bug: the main-process handler
+    // used to resolve with the BrowserWindow itself, which can't cross the
+    // IPC bridge ("An object could not be cloned") — the invoke() below never
+    // settled. Fixed by resolving with nothing there; safe to await here now.
+    await window.gravador.createOverlay();
+    // transition+render BEFORE positioning: render() shrinks the window to
+    // the compact size. positionForRecording() computes coordinates from
+    // that same compact size — running it first left the (still expanded,
+    // 420px-tall) window moved to a spot sized for the compact bar, so a
+    // chunk of the expanded window's old footprint stayed behind, planted
+    // over the recording area and swallowing clicks meant for the overlay.
+    transition('start');
+    render();
+    await positionForRecording(logicalRect);
     await window.gravador.runCountdown();
     await window.recorderApi.start(screenSource.id, cropRect);
     if (logicalRect) window.gravador.showAreaFrame(logicalRect);
-    transition('start');
     startTimer();
-    render();
   } finally {
     recordingStarting = false;
   }
@@ -168,6 +238,7 @@ btnStop.addEventListener('click', async () => {
   stopTimer();
   applyTool('none', toolColor); // else the overlay keeps swallowing clicks after recording ends
   window.gravador.hideAreaFrame(); // no-op in fullscreen mode, idempotent otherwise
+  window.gravador.destroyOverlay();
   transition('stop');
   render();
 });
@@ -180,6 +251,7 @@ btnCancel.addEventListener('click', async () => {
   stopTimer();
   applyTool('none', toolColor);
   window.gravador.hideAreaFrame();
+  window.gravador.destroyOverlay();
   transition('cancel');
   resetToFullscreenMode();
   render();
@@ -228,18 +300,7 @@ btnClose.addEventListener('click', () => {
   window.close();
 });
 
-// ---- Overlay tool state — nextColor cycle inlined (mirrors src/lib/colorCycle.js) ----
-const { nextColor } = (function () {
-  const CYCLE = [null, '#000000', '#0000FF', '#FF0000'];
-  return {
-    nextColor(current) {
-      const idx = CYCLE.indexOf(current);
-      if (idx === -1) return null;
-      return CYCLE[(idx + 1) % CYCLE.length];
-    }
-  };
-})();
-
+// ---- Overlay tool state ----
 let activeTool = 'none';       // 'none' | 'pen' | 'arrow' | 'rect'
 let toolColor = '#000000';
 
@@ -251,26 +312,55 @@ const TOOL_BUTTONS = {
   rect: [document.getElementById('btnRectC')]
 };
 
+const colorSwatches = document.querySelectorAll('#colorSwatches .color-swatch');
+
 function syncToolButtons() {
   for (const [tool, els] of Object.entries(TOOL_BUTTONS)) {
     for (const el of els) {
       if (el) el.classList.toggle('active', activeTool === tool);
     }
   }
+  body.classList.toggle('tool-active', activeTool !== 'none');
+  // Toggling a tool during recording/paused changes whether the color row is
+  // visible — the window must grow/shrink to match, not just render() (which
+  // only fires on idle/recording/paused/preview state transitions).
+  if (state === 'recording' || state === 'paused') {
+    window.gravador.resizeWindow(compactSize());
+  }
+}
+
+function syncColorSwatches() {
+  colorSwatches.forEach((el) => el.classList.toggle('active', el.dataset.color === toolColor));
 }
 
 function applyTool(tool, color) {
   activeTool = tool;
   toolColor = color || toolColor;
   syncToolButtons();
+  syncColorSwatches();
   window.gravador.setOverlayTool({ tool: activeTool, color: toolColor });
 }
 
-window.gravador.onForceToolNone(() => applyTool('none', toolColor));
+colorSwatches.forEach((el) => el.addEventListener('click', () => {
+  toolColor = el.dataset.color;
+  syncColorSwatches();
+  if (activeTool !== 'none') window.gravador.setOverlayTool({ tool: activeTool, color: toolColor });
+}));
 
-window.gravador.onToggleRecordShortcut(() => {
-  if (state === 'idle' && captureMode === 'fullscreen') btnRecord.click();
-  else if (state === 'recording' || state === 'paused') btnStop.click();
+window.gravador.onForceToolNone(() => applyTool('none', toolColor));
+btnToolOff.addEventListener('click', () => applyTool('none', toolColor));
+
+window.gravador.onShortcutAction((action) => {
+  if (action === 'toggleRecord') {
+    if (state === 'idle' && captureMode === 'fullscreen') btnRecord.click();
+    else if (state === 'recording' || state === 'paused') btnStop.click();
+  } else if (action === 'pause') {
+    if (state === 'recording' || state === 'paused') btnPause.click();
+  } else if (action === 'cancel') {
+    if (state === 'recording' || state === 'paused') btnCancel.click();
+  } else if (action === 'pen' || action === 'arrow' || action === 'rect') {
+    if (state === 'recording' || state === 'paused') toggleTool(action);
+  }
 });
 
 // ---- Keyboard-shortcut settings panel ----
@@ -285,45 +375,64 @@ function keysToAccelerator({ ctrlKey, metaKey, shiftKey, altKey, key }) {
   return parts.join('+');
 }
 
+// Each .shortcut-field wraps one action's input + clear button; wiring is
+// identical across all 6, so it's driven by data-action instead of six
+// hand-written blocks.
+shortcutFields.forEach((field) => {
+  const action = field.dataset.action;
+  const input = field.querySelector('.shortcutInput');
+  const clearBtn = field.querySelector('.shortcutClear');
+
+  input.addEventListener('keydown', (e) => {
+    e.preventDefault();
+    if (e.key === 'Escape') { input.blur(); return; }
+    const accelerator = keysToAccelerator(e);
+    if (!accelerator) return; // only a modifier held so far, keep waiting
+    input.value = accelerator;
+    window.gravador.updateSettings({ shortcuts: { [action]: accelerator } });
+  });
+
+  clearBtn.addEventListener('click', () => {
+    input.value = '';
+    window.gravador.updateSettings({ shortcuts: { [action]: null } });
+  });
+});
+
+settingsTabs.forEach((tab) => tab.addEventListener('click', () => {
+  settingsTabs.forEach((t) => t.classList.toggle('active', t === tab));
+  settingsTabPanels.forEach((p) => p.classList.toggle('active', p.dataset.tabPanel === tab.dataset.tab));
+}));
+
 btnSettings.addEventListener('click', async () => {
   if (state !== 'idle') return;
   body.classList.add('settings-open');
+  // Always reopen on the Shortcuts tab, regardless of which tab was active
+  // last time the panel was closed.
+  settingsTabs.forEach((t) => t.classList.toggle('active', t.dataset.tab === 'shortcuts'));
+  settingsTabPanels.forEach((p) => p.classList.toggle('active', p.dataset.tabPanel === 'shortcuts'));
   const settings = await window.gravador.getSettings();
-  shortcutInput.value = settings.shortcuts?.toggleRecord || '';
+  shortcutFields.forEach((field) => {
+    const input = field.querySelector('.shortcutInput');
+    input.value = settings.shortcuts?.[field.dataset.action] || '';
+  });
 });
 
 btnCloseSettings.addEventListener('click', () => {
   body.classList.remove('settings-open');
 });
 
-shortcutInput.addEventListener('keydown', (e) => {
-  e.preventDefault();
-  if (e.key === 'Escape') { shortcutInput.blur(); return; }
-  const accelerator = keysToAccelerator(e);
-  if (!accelerator) return; // only a modifier held so far, keep waiting
-  shortcutInput.value = accelerator;
-  window.gravador.updateSettings({ shortcuts: { toggleRecord: accelerator } });
-});
-
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && body.classList.contains('settings-open') && document.activeElement !== shortcutInput) {
+  if (e.key === 'Escape' && body.classList.contains('settings-open') && !document.activeElement.classList.contains('shortcutInput')) {
     body.classList.remove('settings-open');
   }
 });
-
-// Pen keeps its color-cycling behavior: click cycles black → blue → red → off.
-function onPenClick() {
-  const next = activeTool === 'pen' ? nextColor(toolColor) : '#000000';
-  if (!next) applyTool('none', toolColor);
-  else applyTool('pen', next);
-}
 
 function toggleTool(tool) {
   if (activeTool === tool) applyTool('none', toolColor);
   else applyTool(tool, toolColor);
 }
 
-TOOL_BUTTONS.pen.forEach((el) => el && el.addEventListener('click', onPenClick));
+TOOL_BUTTONS.pen.forEach((el) => el && el.addEventListener('click', () => toggleTool('pen')));
 TOOL_BUTTONS.arrow.forEach((el) => el && el.addEventListener('click', () => toggleTool('arrow')));
 TOOL_BUTTONS.rect.forEach((el) => el && el.addEventListener('click', () => toggleTool('rect')));
 
@@ -387,7 +496,7 @@ window.gravador.onSettingsChanged((settings) => {
 
 // ---- Manual window drag (replaces -webkit-app-region, broken on transparent Windows windows) ----
 function isInteractive(el) {
-  return !!el.closest('button, select, input, label, a, .switch, .pill-controls, .compact-tools');
+  return !!el.closest('button, select, input, label, a, .switch, .pill-controls, .compact-tools, .color-swatches');
 }
 
 function initWindowDrag() {

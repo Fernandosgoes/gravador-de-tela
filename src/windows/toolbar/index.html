@@ -24,16 +24,81 @@
 
       <div class="settings-panel" id="settingsPanel">
         <div class="settings-header">
-          <span class="title">Atalhos de teclado</span>
           <button class="icon-btn" id="btnCloseSettings" title="Voltar">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
           </button>
+          <span class="title">Configurações</span>
         </div>
-        <div class="settings-body">
-          <div class="field">
-            <label for="shortcutInput">Iniciar/Parar gravação</label>
-            <input type="text" id="shortcutInput" readonly placeholder="Clique e pressione as teclas">
+
+        <div class="settings-tabs">
+          <button class="settings-tab active" data-tab="shortcuts">Atalhos</button>
+          <button class="settings-tab" data-tab="about">Sobre</button>
+        </div>
+
+        <div class="settings-body settings-tab-panel active" data-tab-panel="shortcuts">
+          <div class="field shortcut-field" data-action="toggleRecord">
+            <label>Iniciar/Parar gravação</label>
+            <div class="shortcut-row">
+              <input type="text" class="shortcutInput" readonly placeholder="Sem atalho — clique para definir">
+              <button class="icon-btn shortcutClear" title="Remover atalho">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
           </div>
+          <div class="field shortcut-field" data-action="pause">
+            <label>Pausar / Retomar</label>
+            <div class="shortcut-row">
+              <input type="text" class="shortcutInput" readonly placeholder="Sem atalho — clique para definir">
+              <button class="icon-btn shortcutClear" title="Remover atalho">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="field shortcut-field" data-action="cancel">
+            <label>Cancelar gravação</label>
+            <div class="shortcut-row">
+              <input type="text" class="shortcutInput" readonly placeholder="Sem atalho — clique para definir">
+              <button class="icon-btn shortcutClear" title="Remover atalho">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="field shortcut-field" data-action="pen">
+            <label>Caneta</label>
+            <div class="shortcut-row">
+              <input type="text" class="shortcutInput" readonly placeholder="Sem atalho — clique para definir">
+              <button class="icon-btn shortcutClear" title="Remover atalho">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="field shortcut-field" data-action="arrow">
+            <label>Seta</label>
+            <div class="shortcut-row">
+              <input type="text" class="shortcutInput" readonly placeholder="Sem atalho — clique para definir">
+              <button class="icon-btn shortcutClear" title="Remover atalho">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="field shortcut-field" data-action="rect">
+            <label>Retângulo</label>
+            <div class="shortcut-row">
+              <input type="text" class="shortcutInput" readonly placeholder="Sem atalho — clique para definir">
+              <button class="icon-btn shortcutClear" title="Remover atalho">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-body settings-tab-panel about-panel" data-tab-panel="about">
+          <div class="about-app">Gravador de Tela</div>
+          <div class="about-author">Feito por Fernando Sabino Goes</div>
+          <p class="about-message">
+            Esse app foi feito para que você não precise mais se preocupar com seus dados em outras plataformas.
+            Baixe e use — sem assinatura, sem mensalidade, 100% gratuito.
+          </p>
         </div>
       </div>
 
@@ -88,32 +153,51 @@
     </div>
 
     <div class="compact-view" id="compactDragZone">
-      <div class="rec-dot"></div>
-      <span class="timer" id="pillTimer">00:00</span>
+      <div class="compact-row1">
+        <div class="rec-dot"></div>
+        <span class="timer" id="pillTimer">00:00</span>
 
-      <div class="compact-tools">
-        <button class="icon-btn" id="btnPenC" title="Caneta">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg>
-        </button>
-        <button class="icon-btn" id="btnArrowC" title="Seta">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg>
-        </button>
-        <button class="icon-btn" id="btnRectC" title="Retângulo">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>
-        </button>
+        <div class="pill-divider"></div>
+
+        <div class="compact-tools">
+          <button class="icon-btn" id="btnPenC" title="Caneta">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg>
+          </button>
+          <button class="icon-btn" id="btnArrowC" title="Seta">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg>
+          </button>
+          <button class="icon-btn" id="btnRectC" title="Retângulo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>
+          </button>
+        </div>
+
+        <span class="spacer"></span>
+
+        <div class="pill-controls">
+          <button class="icon-btn" id="btnPause" title="Pausar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+          </button>
+          <button class="icon-btn" id="btnStop" title="Parar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>
+          </button>
+          <button class="icon-btn danger" id="btnCancel" title="Cancelar gravação (descarta)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          </button>
+        </div>
       </div>
 
-      <div class="pill-divider"></div>
-
-      <div class="pill-controls">
-        <button class="icon-btn" id="btnPause" title="Pausar">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
-        </button>
-        <button class="icon-btn" id="btnStop" title="Parar">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>
-        </button>
-        <button class="icon-btn danger" id="btnCancel" title="Cancelar gravação (descarta)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      <div class="compact-row2" id="colorSwatches">
+        <span class="swatch-label">Cor</span>
+        <div class="color-swatches">
+          <button class="color-swatch active" data-color="#000000" title="Preto" style="background:#000000"></button>
+          <button class="color-swatch" data-color="#FFFFFF" title="Branco" style="background:#FFFFFF"></button>
+          <button class="color-swatch" data-color="#FF3B30" title="Vermelho" style="background:#FF3B30"></button>
+          <button class="color-swatch" data-color="#FFCC00" title="Amarelo" style="background:#FFCC00"></button>
+          <button class="color-swatch" data-color="#0A84FF" title="Azul" style="background:#0A84FF"></button>
+        </div>
+        <span class="spacer"></span>
+        <button class="icon-btn" id="btnToolOff" title="Desligar ferramenta (Esc)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
         </button>
       </div>
     </div>

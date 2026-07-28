@@ -147,27 +147,51 @@ function createAreaSelectWindow() {
 
 let overlayWindow = null;
 
+// Created on demand at recording start and destroyed at recording end (see
+// overlay:create/overlay:destroy below) rather than living for the app's
+// whole lifetime — it's a fullscreen alwaysOnTop window with a continuous
+// rAF render loop, so keeping it around while idle (the vast majority of the
+// app's runtime) costs GPU/compositor work for nothing.
 function createOverlayWindow() {
-  const { screen } = require('electron');
-  const primary = screen.getPrimaryDisplay();
-  overlayWindow = new BrowserWindow({
-    x: 0,
-    y: 0,
-    width: primary.bounds.width,
-    height: primary.bounds.height,
-    transparent: true,
-    frame: false,
-    alwaysOnTop: true,
-    skipTaskbar: true,
-    focusable: true,
-    webPreferences: {
-      preload: require('path').join(__dirname, '../windows/overlay/preload.js'),
-      contextIsolation: true
-    }
+  return new Promise((resolve) => {
+    const { screen } = require('electron');
+    const primary = screen.getPrimaryDisplay();
+    overlayWindow = new BrowserWindow({
+      x: 0,
+      y: 0,
+      width: primary.bounds.width,
+      height: primary.bounds.height,
+      transparent: true,
+      frame: false,
+      alwaysOnTop: true,
+      skipTaskbar: true,
+      focusable: true,
+      // A new BrowserWindow steals focus by default once shown. That was
+      // harmless when this window was created once at app boot (nothing else
+      // was competing for focus yet), but now it's created right before the
+      // countdown/recording flow starts — without show:false it would steal
+      // focus from the countdown window and toolbar mid-flow.
+      show: false,
+      webPreferences: {
+        preload: require('path').join(__dirname, '../windows/overlay/preload.js'),
+        contextIsolation: true
+      }
+    });
+    overlayWindow.setIgnoreMouseEvents(true, { forward: true });
+    overlayWindow.webContents.once('did-finish-load', () => {
+      // Resolve with nothing serializable, not the BrowserWindow itself — this
+      // handler answers an ipcRenderer.invoke(), and a BrowserWindow can't be
+      // structured-cloned across that bridge ("An object could not be cloned").
+      resolve();
+      overlayWindow.showInactive(); // visible but never steals focus from the countdown/toolbar
+    });
+    overlayWindow.loadFile(require('path').join(__dirname, '../windows/overlay/index.html'));
   });
-  overlayWindow.setIgnoreMouseEvents(true, { forward: true });
-  overlayWindow.loadFile(require('path').join(__dirname, '../windows/overlay/index.html'));
-  return overlayWindow;
+}
+
+function destroyOverlayWindow() {
+  if (overlayWindow && !overlayWindow.isDestroyed()) overlayWindow.destroy();
+  overlayWindow = null;
 }
 
 function createCountdownWindow() {
@@ -274,27 +298,43 @@ function saveSettings(settings) {
   }
 }
 
+// Only toggleRecord ships with a default binding — the rest start unbound
+// until the user opts in and assigns one from the shortcuts panel.
+const DEFAULT_SHORTCUTS = {
+  toggleRecord: 'CommandOrControl+Shift+R',
+  pause: null,
+  cancel: null,
+  pen: null,
+  arrow: null,
+  rect: null
+};
+
 let appSettings = {
   cameraId: null,
   micEnabled: true,
   micId: null,
   systemAudioEnabled: true,
-  shortcuts: { toggleRecord: 'CommandOrControl+Shift+R' },
+  shortcuts: { ...DEFAULT_SHORTCUTS },
   ...loadSettings()
 };
 
-let registeredShortcut = null;
+let registeredShortcuts = {}; // action -> accelerator currently registered with globalShortcut
 
-function applyRecordShortcut(accelerator) {
-  if (registeredShortcut) globalShortcut.unregister(registeredShortcut);
-  registeredShortcut = null;
-  if (!accelerator) return;
-  const ok = globalShortcut.register(accelerator, () => {
-    if (toolbarWindow && !toolbarWindow.isDestroyed()) {
-      toolbarWindow.webContents.send('shortcut:toggle-record');
-    }
-  });
-  if (ok) registeredShortcut = accelerator;
+function applyShortcuts(shortcuts) {
+  for (const [action, accelerator] of Object.entries(registeredShortcuts)) {
+    globalShortcut.unregister(accelerator);
+  }
+  registeredShortcuts = {};
+  for (const action of Object.keys(DEFAULT_SHORTCUTS)) {
+    const accelerator = shortcuts[action];
+    if (!accelerator) continue;
+    const ok = globalShortcut.register(accelerator, () => {
+      if (toolbarWindow && !toolbarWindow.isDestroyed()) {
+        toolbarWindow.webContents.send('shortcut:action', action);
+      }
+    });
+    if (ok) registeredShortcuts[action] = accelerator;
+  }
 }
 
 let currentRecordingState = 'idle';
@@ -324,7 +364,7 @@ app.on('will-quit', () => {
 app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
 
-  applyRecordShortcut(appSettings.shortcuts.toggleRecord);
+  applyShortcuts(appSettings.shortcuts);
 
   ipcMain.on('recording:state-changed', (event, state) => {
     currentRecordingState = state;
@@ -332,6 +372,9 @@ app.whenReady().then(() => {
   ipcMain.handle('capture:list-sources', () => listSources());
   ipcMain.handle('areaselect:pick', () => createAreaSelectWindow());
   ipcMain.handle('countdown:run', () => createCountdownWindow());
+  ipcMain.handle('overlay:create', () => createOverlayWindow());
+  ipcMain.on('overlay:destroy', () => destroyOverlayWindow());
+  let ignoreMouseNudgeTimer = null;
   ipcMain.on('overlay:set-tool', (event, payload) => {
     if (overlayWindow) {
       overlayWindow.setIgnoreMouseEvents(payload.tool === 'none', { forward: true });
@@ -346,13 +389,34 @@ app.whenReady().then(() => {
       const bounds = overlayWindow.getBounds();
       overlayWindow.setBounds(bounds);
     }
+    // The same DWM state-loss can happen spontaneously mid-draw, without any
+    // tool switch — reported as strokes silently stopping to register after
+    // heavy, repeated use of the same tool, recoverable only by forcing the
+    // tool off (Escape) and back on. Re-asserting setIgnoreMouseEvents(false)
+    // on an interval while a tool is active is a low-cost way to keep
+    // correcting that drift without waiting for the user to touch a button.
+    clearInterval(ignoreMouseNudgeTimer);
+    ignoreMouseNudgeTimer = null;
+    if (payload.tool !== 'none') {
+      ignoreMouseNudgeTimer = setInterval(() => {
+        if (!overlayWindow || overlayWindow.isDestroyed()) {
+          clearInterval(ignoreMouseNudgeTimer);
+          ignoreMouseNudgeTimer = null;
+          return;
+        }
+        overlayWindow.setIgnoreMouseEvents(false, { forward: true });
+      }, 2000);
+    }
     // The overlay is fullscreen and alwaysOnTop; without an explicit level it can
     // end up above the toolbar once a tool starts capturing clicks, making the
     // recording bar's own buttons unreachable. Elevate the toolbar's level only
-    // while a tool is active, so Cancel/Stop/re-clicking the tool stay reachable
-    // without the toolbar permanently outranking the user's other windows.
+    // while a tool is active; drop it back to its normal always-on-top level
+    // (never fully off — the toolbar is meant to always float above regular
+    // windows) once the tool is off. Pre-existing: dragging the toolbar while
+    // a tool is active (overlay's rAF loop running full-tilt) stutters — not
+    // something the alwaysOnTop level fixes, see the drag-performance work.
     if (toolbarWindow && !toolbarWindow.isDestroyed()) {
-      toolbarWindow.setAlwaysOnTop(payload.tool !== 'none', 'screen-saver');
+      toolbarWindow.setAlwaysOnTop(true, payload.tool !== 'none' ? 'screen-saver' : 'normal');
     }
     // Escape as a safety net to force the tool off only while a tool is active —
     // registering it globally at all times hijacks Esc from every other app on
@@ -379,14 +443,18 @@ app.whenReady().then(() => {
       shortcuts: { ...appSettings.shortcuts, ...newSettings.shortcuts }
     };
     saveSettings(appSettings);
-    const nextAccel = appSettings.shortcuts?.toggleRecord;
-    if (nextAccel !== registeredShortcut) applyRecordShortcut(nextAccel);
+    if (newSettings.shortcuts) applyShortcuts(appSettings.shortcuts);
     BrowserWindow.getAllWindows().forEach(w => w.webContents.send('settings:changed', appSettings));
   });
   ipcMain.on('toolbar:resize', (event, { width, height }) => {
     const win = BrowserWindow.fromWebContents(event.sender);
     if (win) win.setSize(width, height, true);
   });
+  ipcMain.on('toolbar:position', (event, { x, y }) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win) win.setPosition(Math.round(x), Math.round(y));
+  });
+  ipcMain.handle('screen:get-primary-bounds', () => require('electron').screen.getPrimaryDisplay().bounds);
   // Manual window drag. -webkit-app-region:drag is broken on Windows when the
   // window is transparent:true (Chromium renders a ghost outline and the window
   // never follows). screen.getCursorScreenPoint() returns DIP coordinates — the
@@ -435,7 +503,6 @@ app.whenReady().then(() => {
     return { opened: true };
   });
   createToolbarWindow();
-  createOverlayWindow();
   createTray();
 });
 
