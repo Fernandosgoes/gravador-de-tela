@@ -106,6 +106,7 @@ body.state-paused .expanded-view { display: none; }
 body.state-recording .compact-view,
 body.state-paused .compact-view { display: flex; }
 
+
 .expanded-view {
   display: flex;
   flex-direction: column;
@@ -392,6 +393,15 @@ body.state-paused .rec-dot { animation: none; opacity: 0.4; }
 }
 .icon-btn.danger { color: #FF6A61; }
 .icon-btn.danger:hover:not(:disabled) {
+  background: rgba(255, 59, 48, 0.14);
+  color: #FF3B30;
+}
+/* Distinguishes Stop from the same-shaped rectangle-tool button next to it. */
+.icon-btn.stop-outline {
+  border: 1.5px solid #FF3B30;
+  color: #FF6A61;
+}
+.icon-btn.stop-outline:hover:not(:disabled) {
   background: rgba(255, 59, 48, 0.14);
   color: #FF3B30;
 }

@@ -39,24 +39,46 @@ window.overlayBridge.onToolChanged(({ tool, color }) => {
   if (color) currentColor = color;
 });
 
+// Set once per recording (null in fullscreen mode) — confines drawing to the
+// area actually being captured, so strokes can't land outside the recorded
+// region and end up invisible in the exported video.
+let areaRect = null;
+window.overlayBridge.onAreaSet((rect) => { areaRect = rect; });
+
 function pointFromEvent(e) {
   return { x: e.clientX, y: e.clientY };
 }
 
+function insideArea(p) {
+  if (!areaRect) return true;
+  return p.x >= areaRect.x && p.x <= areaRect.x + areaRect.width &&
+         p.y >= areaRect.y && p.y <= areaRect.y + areaRect.height;
+}
+
 canvas.addEventListener('mousedown', (e) => {
   if (currentTool === 'none') return;
+  const p = pointFromEvent(e);
+  if (!insideArea(p)) return;
   drawing = true;
-  activeStroke = { type: currentTool, points: [pointFromEvent(e)], color: currentColor, addedAt: Date.now() };
+  activeStroke = { type: currentTool, points: [p], color: currentColor, addedAt: Date.now() };
   ensureRendering();
 });
 
 canvas.addEventListener('mousemove', (e) => {
   if (!drawing || !activeStroke) return;
+  // Clamp to the area's edges rather than dropping the point — lets the user
+  // drag right up to the boundary without the stroke stopping short or
+  // needing pixel-perfect precision.
+  const raw = pointFromEvent(e);
+  const p = areaRect ? {
+    x: Math.min(Math.max(raw.x, areaRect.x), areaRect.x + areaRect.width),
+    y: Math.min(Math.max(raw.y, areaRect.y), areaRect.y + areaRect.height)
+  } : raw;
   if (currentTool === 'pen') {
-    activeStroke.points.push(pointFromEvent(e));
+    activeStroke.points.push(p);
   } else if (currentTool === 'arrow' || currentTool === 'rect') {
     // Both are two-point shapes: [anchor, current cursor].
-    activeStroke.points[1] = pointFromEvent(e);
+    activeStroke.points[1] = p;
   }
 });
 

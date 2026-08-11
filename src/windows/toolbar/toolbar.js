@@ -80,7 +80,6 @@ const btnPause = document.getElementById('btnPause');
 const btnStop = document.getElementById('btnStop');
 const btnSave = document.getElementById('btnSave');
 const btnDiscard = document.getElementById('btnDiscard');
-const btnOpenFolder = document.getElementById('btnOpenFolder');
 const btnClose = document.getElementById('btnClose');
 const btnPen = document.getElementById('btnPen');
 const btnArrow = document.getElementById('btnArrow');
@@ -96,14 +95,16 @@ const shortcutFields = document.querySelectorAll('.shortcut-field');
 const settingsTabs = document.querySelectorAll('.settings-tab');
 const settingsTabPanels = document.querySelectorAll('.settings-tab-panel');
 const outputFormatInputs = document.querySelectorAll('input[name="outputFormat"]');
+const frameColorSwatches = document.getElementById('frameColorSwatches');
 
 let captureMode = 'fullscreen'; // 'fullscreen' | 'area'
 let outputFormat = 'mp4'; // 'mp4' | 'webm'
+let frameColor = '#30D158';
 let lastRecordingBlob = null;
 let recordingStartedAt = null;
 let timerInterval = null;
-let hasSavedThisSession = false;
 let recordingStarting = false;
+let pickingArea = false;
 
 // Explicit reset back to the default capture mode. Must be called only at real
 // "back to clean idle" points (after save/discard) — NOT from inside render(),
@@ -155,26 +156,36 @@ function updateTimer() {
 
 // ---- Capture mode selection ----
 modeFullscreen.addEventListener('click', () => {
-  if (state !== 'idle') return;
+  // Clicking "Tela Inteira" while an area picker is still open (awaiting
+  // pickArea() below) used to only flip the toolbar's own UI state, leaving
+  // that picker's fullscreen darkening overlay window orphaned on screen —
+  // a second "Área Customizada" click then opened another one on top of it,
+  // stacking the darken effect. Block mode switches while a pick is in flight.
+  if (state !== 'idle' || pickingArea) return;
   resetToFullscreenMode();
   render();
 });
 
 modeArea.addEventListener('click', async () => {
-  if (state !== 'idle') return;
+  if (state !== 'idle' || pickingArea) return;
+  pickingArea = true;
   captureMode = 'area';
   modeArea.classList.add('active');
   modeFullscreen.classList.remove('active');
   render();
 
-  const picked = await window.gravador.pickArea();
-  if (!picked) {
-    // user pressed Escape — revert to fullscreen mode
-    resetToFullscreenMode();
-    render();
-    return;
+  try {
+    const picked = await window.gravador.pickArea();
+    if (!picked) {
+      // user pressed Escape — revert to fullscreen mode
+      resetToFullscreenMode();
+      render();
+      return;
+    }
+    await beginRecording(picked.physical, picked.logical);
+  } finally {
+    pickingArea = false;
   }
-  await beginRecording(picked.physical, picked.logical);
 });
 
 // ---- Recording flow ----
@@ -196,6 +207,7 @@ async function beginRecording(cropRect, logicalRect) {
     // IPC bridge ("An object could not be cloned") — the invoke() below never
     // settled. Fixed by resolving with nothing there; safe to await here now.
     await window.gravador.createOverlay();
+    window.gravador.setOverlayArea(logicalRect || null); // confines drawing tools to the recorded area; null in fullscreen mode
     // transition+render BEFORE positioning: render() shrinks the window to
     // the compact size. positionForRecording() computes coordinates from
     // that same compact size — running it first left the (still expanded,
@@ -207,7 +219,18 @@ async function beginRecording(cropRect, logicalRect) {
     await positionForRecording(logicalRect);
     await window.gravador.runCountdown();
     await window.recorderApi.start(screenSource.id, cropRect);
-    if (logicalRect) window.gravador.showAreaFrame(logicalRect);
+    // Outline stays up for the whole recording (not just a brief preview) so
+    // it's always clear what's being captured. Fullscreen mode has no area
+    // rect of its own, so build one covering the full display. Shown after
+    // the countdown (not during it) because the countdown window is created
+    // later and sits on top as an opaque overlay, which would otherwise hide
+    // the frame's thin border underneath it.
+    let frameRect = logicalRect;
+    if (!frameRect) {
+      const bounds = await window.gravador.getPrimaryDisplayBounds();
+      frameRect = { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height };
+    }
+    window.gravador.showAreaFrame({ ...frameRect, color: frameColor });
     startTimer();
   } finally {
     recordingStarting = false;
@@ -239,7 +262,7 @@ btnStop.addEventListener('click', async () => {
   }
   stopTimer();
   applyTool('none', toolColor); // else the overlay keeps swallowing clicks after recording ends
-  window.gravador.hideAreaFrame(); // no-op in fullscreen mode, idempotent otherwise
+  window.gravador.hideAreaFrame();
   window.gravador.destroyOverlay();
   transition('stop');
   render();
@@ -271,8 +294,6 @@ btnSave.addEventListener('click', async () => {
       if (result.format === 'webm') {
         alert('Não foi possível converter para MP4, salvo como WebM: ' + result.path + '\n\nMotivo: ' + result.warning);
       }
-      hasSavedThisSession = true;
-      btnOpenFolder.disabled = false;
       lastRecordingBlob = null;
       transition('save');
       resetToFullscreenMode();
@@ -294,17 +315,13 @@ btnDiscard.addEventListener('click', () => {
   render();
 });
 
-btnOpenFolder.addEventListener('click', async () => {
-  await window.gravador.openLastFolder();
-});
-
 btnClose.addEventListener('click', () => {
   window.close();
 });
 
 // ---- Overlay tool state ----
 let activeTool = 'none';       // 'none' | 'pen' | 'arrow' | 'rect'
-let toolColor = '#000000';
+let toolColor = '#FFCC00';
 
 // Buttons come in pairs: the expanded card and the compact recording bar each
 // have their own DOM node for the same logical tool.
@@ -480,6 +497,12 @@ function pushSettingsUpdate() {
   });
 }
 
+function syncFrameColorSwatches() {
+  frameColorSwatches.querySelectorAll('.color-swatch').forEach((el) => {
+    el.classList.toggle('active', el.dataset.color === frameColor);
+  });
+}
+
 async function initSettings() {
   await populateDevices();
   const settings = await window.gravador.getSettings();
@@ -487,6 +510,8 @@ async function initSettings() {
   micSelect.value = settings.micId || '';
   sysAudioToggle.checked = !!settings.systemAudioEnabled;
   outputFormat = settings.outputFormat || 'mp4';
+  frameColor = settings.frameColor || '#30D158';
+  syncFrameColorSwatches();
 }
 
 cameraSelect.addEventListener('change', pushSettingsUpdate);
@@ -497,12 +522,21 @@ outputFormatInputs.forEach((input) => input.addEventListener('change', () => {
   outputFormat = input.value;
   window.gravador.updateSettings({ outputFormat });
 }));
+frameColorSwatches.querySelectorAll('.color-swatch').forEach((swatch) => {
+  swatch.addEventListener('click', () => {
+    frameColor = swatch.dataset.color;
+    syncFrameColorSwatches();
+    window.gravador.updateSettings({ frameColor });
+  });
+});
 
 window.gravador.onSettingsChanged((settings) => {
   cameraSelect.value = settings.cameraId || '';
   micSelect.value = settings.micId || '';
   sysAudioToggle.checked = !!settings.systemAudioEnabled;
   outputFormat = settings.outputFormat || 'mp4';
+  frameColor = settings.frameColor || '#30D158';
+  syncFrameColorSwatches();
 });
 
 // ---- Manual window drag (replaces -webkit-app-region, broken on transparent Windows windows) ----
@@ -540,6 +574,5 @@ function initWindowDrag() {
 initWindowDrag();
 
 // ---- Init ----
-btnOpenFolder.disabled = !hasSavedThisSession;
 initSettings();
 render();

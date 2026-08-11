@@ -6,6 +6,7 @@ test('builds correct ffmpeg args for mp4 transcode', () => {
   const args = buildTranscodeArgs('in.webm', 'out.mp4');
   assert.deepStrictEqual(args, [
     '-i', 'in.webm',
+    '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2',
     '-c:v', 'libx264',
     '-crf', '23',
     '-preset', 'medium',

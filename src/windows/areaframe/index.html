@@ -8,7 +8,7 @@
       position: absolute;
       display: none;
       border: 2px solid #30D158;
-      box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.55);
+      box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.25);
       box-sizing: border-box;
       pointer-events: none;
     }
@@ -26,6 +26,7 @@
       el.style.top = rect.y + 'px';
       el.style.width = rect.width + 'px';
       el.style.height = rect.height + 'px';
+      if (rect.color) el.style.borderColor = rect.color;
       el.style.display = 'block';
     });
   </script>

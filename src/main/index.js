@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, globalShortcut, Tray, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, globalShortcut, Tray, Menu } = require('electron');
 const { listSources } = require('./capture');
 const { toCropParams } = require('../lib/cropMath');
 const { saveRecording } = require('./export');
@@ -8,25 +8,39 @@ app.setName('Gravador de Tela');
 let toolbarWindow = null;
 app.isQuitting = false;
 
-function createToolbarWindow() {
+// bounds/shouldShow let recreateToolbarWindow() restore the previous window's
+// position and defer showing until it's fully sized+stated — see there for why.
+function createToolbarWindow(bounds, shouldShow = true) {
   const win = new BrowserWindow({
-    width: 560,
-    height: 110,
+    // 296x420 matches EXPANDED_SIZE (toolbar.js) — the idle-state size every
+    // fresh window lands in, whether at first boot or after recreation.
+    width: 296,
+    height: 420,
     alwaysOnTop: true,
     resizable: false,
     transparent: true,
     frame: false,
+    show: false,
     webPreferences: {
       preload: require('path').join(__dirname, '../windows/toolbar/preload.js'),
       contextIsolation: true
     }
   });
+  // Must match or beat the 'screen-saver' level used by areaframe/countdown/
+  // areaselect — otherwise the area outline's darkening overlay paints over
+  // the toolbar whenever it sits outside the recorded area, making it look
+  // dim/washed-out even though it's fully opaque.
+  win.setAlwaysOnTop(true, 'screen-saver');
+  if (bounds) win.setBounds(bounds);
   win.loadFile(require('path').join(__dirname, '../windows/toolbar/index.html'));
   win.on('close', (event) => {
     if (!app.isQuitting) {
       event.preventDefault();
       win.hide();
     }
+  });
+  win.once('ready-to-show', () => {
+    if (shouldShow) win.show();
   });
   toolbarWindow = win;
   return win;
@@ -49,13 +63,15 @@ function recreateToolbarWindow() {
     return;
   }
   const wasVisible = toolbarWindow && !toolbarWindow.isDestroyed() && toolbarWindow.isVisible();
+  const bounds = wasVisible ? toolbarWindow.getBounds() : null;
   if (toolbarWindow && !toolbarWindow.isDestroyed()) {
+    // Hide before destroying — otherwise the doomed window can paint one more
+    // stale frame (still showing the old Save/Discard preview state) during
+    // teardown, which read as a flash right before the toolbar disappeared.
+    toolbarWindow.hide();
     toolbarWindow.destroy();
   }
-  createToolbarWindow();
-  if (!wasVisible) {
-    toolbarWindow.hide();
-  }
+  createToolbarWindow(bounds, wasVisible);
 }
 
 let tray = null; // kept top-level: the GC destroys the tray icon if it's only function-local
@@ -84,7 +100,13 @@ function createTray() {
   tray.on('click', showToolbar);
 }
 
+let areaSelectWindow = null;
+
 function createAreaSelectWindow() {
+  // Defense in depth against orphaned pickers: if a previous pick is somehow
+  // still open (e.g. IPC invoked twice before the first resolved), close it
+  // first rather than stacking a second darkening overlay on top of it.
+  if (areaSelectWindow && !areaSelectWindow.isDestroyed()) areaSelectWindow.close();
   return new Promise((resolve) => {
     const { screen } = require('electron');
     const primary = screen.getPrimaryDisplay();
@@ -105,12 +127,14 @@ function createAreaSelectWindow() {
       }
     });
     win.setAlwaysOnTop(true, 'screen-saver'); // must win over the Windows taskbar
+    areaSelectWindow = win;
 
     let settled = false;
     const cleanup = (result) => {
       if (settled) return;
       settled = true;
       ipcMain.removeListener('areaselect:result', onResult);
+      if (areaSelectWindow === win) areaSelectWindow = null;
       if (!win.isDestroyed()) win.close();
       resolve(result);
     };
@@ -258,6 +282,7 @@ function createAreaFrameWindow(rect) {
       contextIsolation: true
     }
   });
+  win.setAlwaysOnTop(true, 'screen-saver'); // must win over the Windows taskbar
   // No setContentProtection here: on some GPU/driver combos it makes the window
   // vanish from the actual screen (not just from capture) whenever another app's
   // screen-capture overlay activates (e.g. Lightshot, Windows' Snipping Tool) —
@@ -313,8 +338,9 @@ let appSettings = {
   cameraId: null,
   micEnabled: true,
   micId: null,
-  systemAudioEnabled: true,
+  systemAudioEnabled: false,
   outputFormat: 'mp4',
+  frameColor: '#30D158',
   shortcuts: { ...DEFAULT_SHORTCUTS },
   ...loadSettings()
 };
@@ -375,6 +401,9 @@ app.whenReady().then(() => {
   ipcMain.handle('countdown:run', () => createCountdownWindow());
   ipcMain.handle('overlay:create', () => createOverlayWindow());
   ipcMain.on('overlay:destroy', () => destroyOverlayWindow());
+  ipcMain.on('overlay:set-area', (event, rect) => {
+    if (overlayWindow) overlayWindow.webContents.send('overlay:set-area', rect);
+  });
   let ignoreMouseNudgeTimer = null;
   ipcMain.on('overlay:set-tool', (event, payload) => {
     if (overlayWindow) {
@@ -408,17 +437,13 @@ app.whenReady().then(() => {
         overlayWindow.setIgnoreMouseEvents(false, { forward: true });
       }, 2000);
     }
-    // The overlay is fullscreen and alwaysOnTop; without an explicit level it can
-    // end up above the toolbar once a tool starts capturing clicks, making the
-    // recording bar's own buttons unreachable. Elevate the toolbar's level only
-    // while a tool is active; drop it back to its normal always-on-top level
-    // (never fully off — the toolbar is meant to always float above regular
-    // windows) once the tool is off. Pre-existing: dragging the toolbar while
-    // a tool is active (overlay's rAF loop running full-tilt) stutters — not
-    // something the alwaysOnTop level fixes, see the drag-performance work.
-    if (toolbarWindow && !toolbarWindow.isDestroyed()) {
-      toolbarWindow.setAlwaysOnTop(true, payload.tool !== 'none' ? 'screen-saver' : 'normal');
-    }
+    // The toolbar is created at 'screen-saver' level already (see
+    // createToolbarWindow) and stays there regardless of tool state — it needs
+    // to beat both the overlay (once a tool starts capturing clicks) and the
+    // areaframe outline's darkening layer, which also runs at 'screen-saver'.
+    // Pre-existing: dragging the toolbar while a tool is active (overlay's rAF
+    // loop running full-tilt) stutters — not something the alwaysOnTop level
+    // fixes, see the drag-performance work.
     // Escape as a safety net to force the tool off only while a tool is active —
     // registering it globally at all times hijacks Esc from every other app on
     // the system (e.g. Lightshot's capture overlay, Windows' own snipping tool,
@@ -492,21 +517,12 @@ app.whenReady().then(() => {
     if (rect) createAreaFrameWindow(rect);
   });
   ipcMain.on('areaframe:hide', () => destroyAreaFrameWindow());
-  let lastSavedPath = null;
   ipcMain.handle('export:save', async (event, arrayBuffer, format) => {
     const win = BrowserWindow.fromWebContents(event.sender);
     const result = await saveRecording(Buffer.from(arrayBuffer), win, format);
-    if (result.success) {
-      lastSavedPath = result.path;
-    }
     // Let the IPC response reach the renderer before the window is torn down.
     setImmediate(() => recreateToolbarWindow());
     return result;
-  });
-  ipcMain.handle('export:open-last-folder', () => {
-    if (!lastSavedPath) return { opened: false };
-    shell.showItemInFolder(lastSavedPath);
-    return { opened: true };
   });
   createToolbarWindow();
   createTray();

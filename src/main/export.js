@@ -57,6 +57,12 @@ async function saveRecording(buffer, browserWindow, format = 'mp4') {
 
   try {
     await transcodeToMp4(tempWebm, filePath);
+    // ffmpeg can exit 0 but still leave a 0-byte/truncated file (e.g. killed
+    // mid-encode) — treat that the same as a thrown error so it falls
+    // through to the webm fallback instead of reporting a broken mp4 as success.
+    if (fs.statSync(filePath).size === 0) {
+      throw new Error('ffmpeg produziu um arquivo MP4 vazio.');
+    }
     fs.unlinkSync(tempWebm);
     return { success: true, path: filePath, format: 'mp4' };
   } catch (err) {
@@ -66,6 +72,13 @@ async function saveRecording(buffer, browserWindow, format = 'mp4') {
     if (stats.size === 0) {
       fs.unlinkSync(tempWebm);
       return { success: false, error: 'A gravação capturada está vazia. Motivo: ' + err.message };
+    }
+    // ffmpeg may have already created/opened the target .mp4 before failing —
+    // don't leave that orphaned 0-byte file sitting next to the webm fallback.
+    try {
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    } catch {
+      // best-effort cleanup — a failure here shouldn't mask the fallback save
     }
     const fallbackPath = filePath.replace(/\.mp4$/, '.webm');
     fs.renameSync(tempWebm, fallbackPath);
