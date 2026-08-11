@@ -8,8 +8,10 @@ O código inteiro está aqui, aberto — quem quiser entender como funciona, ada
 
 ## Índice
 - [Instalar](#-instalar)
+- [Como usar](#-como-usar)
 - [Funcionalidades](#-funcionalidades)
 - [Controles](#-controles)
+- [Múltiplos monitores](#-múltiplos-monitores)
 - [Desenvolvimento](#-desenvolvimento)
 - [Arquitetura](#-arquitetura)
 - [Stack técnico](#-stack-técnico)
@@ -34,6 +36,26 @@ O instalador já vem pronto neste repositório, em [`release/Gravador-de-Tela-Se
 > **Aviso do Windows:** o instalador não tem assinatura digital paga (custa dinheiro e não faz sentido pra um projeto pessoal), então o SmartScreen pode mostrar "O Windows protegeu o computador". Clique em **Mais informações** → **Executar assim mesmo**. É o aviso padrão pra qualquer `.exe` não assinado — o código é 100% aberto aqui no repositório, pode conferir.
 
 > **Clonando com `git clone`?** O `.exe` é versionado via [Git LFS](https://git-lfs.com) (arquivos binários grandes não devem virar blob comum no Git). Sem o Git LFS instalado localmente, o arquivo baixado será um ponteiro de texto de ~1 KB em vez do executável de verdade. Nesse caso, use a Opção 1 (download direto pela interface do GitHub), que sempre entrega o arquivo real — o smudge do LFS já roda do lado do servidor.
+
+## 🚀 Como usar
+
+Passo a passo do primeiro uso, do zero até o vídeo salvo:
+
+1. **Abra o app.** Depois de instalado, ele fica rodando em segundo plano com um ícone na bandeja do sistema (perto do relógio, canto inferior direito). A barra flutuante aparece no canto superior direito da tela.
+2. **Escolha o modo de captura**: clique em **Tela Inteira** (grava tudo) ou **Área Customizada** (você desenha um retângulo na tela pra gravar só aquela região). Veja a limitação importante em [Múltiplos monitores](#-múltiplos-monitores) antes de escolher, se você usa mais de um monitor.
+3. Se escolheu **Área Customizada**: a tela escurece — arraste o mouse pra desenhar o retângulo da área que quer gravar. Ajuste puxando os pontos das bordas, ou mova o retângulo inteiro arrastando por dentro dele. Clique **Iniciar** quando estiver satisfeito, ou **Cancelar**/Esc pra voltar.
+4. **(Opcional) Configure câmera, microfone e áudio do sistema** nos dropdowns do card, antes de gravar. Esses valores ficam salvos pra próxima vez.
+5. **Clique no botão vermelho de Gravar.** Uma contagem regressiva 3-2-1 aparece — é sua janela pra se posicionar antes da gravação realmente começar.
+6. **Durante a gravação**, a barra encolhe numa pílula com o cronômetro. Você pode:
+   - Arrastá-la para qualquer lugar da tela.
+   - Usar as ferramentas de anotação (caneta, seta, retângulo) pra desenhar por cima da tela em tempo real — os traços somem sozinhos depois de 6 segundos.
+   - **Pausar** e retomar quando quiser.
+   - **Cancelar** pra descartar tudo na hora, sem gerar arquivo.
+   - **Parar** pra encerrar e ir pra tela de exportação.
+7. **Depois de parar**, escolha **Salvar** (abre o diálogo do Windows pra você escolher onde e com que nome salvar, exportado em MP4 por padrão) ou **Descartar** (joga a gravação fora).
+8. Pronto — o vídeo está salvo onde você escolheu. A barra volta ao estado inicial, pronta pra gravar de novo.
+
+> **Atalho rápido:** `Ctrl+Shift+R` inicia/para a gravação sem precisar clicar em nada — configurável (junto com atalhos pra pausar, cancelar e cada ferramenta de desenho) na aba **Atalhos** das Configurações (ícone de engrenagem no card).
 
 ## ✨ Funcionalidades
 
@@ -60,6 +82,16 @@ O instalador já vem pronto neste repositório, em [`release/Gravador-de-Tela-Se
 - **Salvar / Descartar**: após parar, decide se exporta em MP4 ou descarta a gravação.
 - **Ícone da bandeja**: clique para reabrir a barra; menu com "Abrir" e "Sair".
 - **Configurações** (ícone de engrenagem): aba "Atalhos" pra definir/remover combinações de teclado; aba "Sobre" com informações do app.
+
+## 🖥️ Múltiplos monitores
+
+**O app só grava a tela principal do Windows** (a que está marcada como "Tela principal" em Configurações → Sistema → Tela). Não existe hoje um seletor pra escolher gravar um monitor secundário — se você usa dois ou mais monitores em modo estendido, sempre será a tela principal capturada, independente de onde a barra flutuante estiver posicionada na hora.
+
+Isso é uma limitação conhecida da captura de tela em setups multi-monitor no Windows/Chromium, não uma escolha de design — apareceu em testes reais e ainda não tem solução confiável em todas as combinações de GPU/driver. Se seu fluxo de trabalho depende de gravar um monitor secundário, o contorno é temporário:
+
+- Troque temporariamente qual monitor é o "principal" nas Configurações do Windows (Sistema → Tela → clique no monitor desejado → "Fazer esta minha tela principal"), grave, e depois desfaça a troca.
+
+Se você tem só um monitor, isso não te afeta em nada.
 
 ## 🛠 Desenvolvimento
 
